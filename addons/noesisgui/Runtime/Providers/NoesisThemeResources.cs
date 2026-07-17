@@ -39,11 +39,39 @@ internal static class NoesisThemeResources
         }
     }
 
+    // Exact manifest names recorded during enumeration, keyed by "folder/filename". Reconstructing manifest names from paths is
+    // fragile (MSBuild mangles spaces/special chars differently per segment) — this was exactly why PT Root UI never loaded:
+    // OpenFont's rebuilt name missed the real one.
+    private static readonly Dictionary<string, string> FontManifestNames =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public static Stream OpenXaml(string path) => Open("", path);
 
-    public static Stream OpenFont(string path) => Open(FontNamespace, path);
+    public static Stream OpenFont(string path)
+    {
+        Assembly asm = Assembly;
+        if (asm == null || string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
 
-    /// <summary>Enumerates embedded theme fonts as (folder, filename), e.g. ("Theme/Fonts", "PT Root UI_Regular.ttf").</summary>
+        // Exact name from enumeration first; reconstruction as fallback.
+        if (FontManifestNames.TryGetValue(path, out string exactName))
+        {
+            try
+            {
+                return asm.GetManifestResourceStream(exactName);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        return Open(FontNamespace, path);
+    }
+
+    /// <summary>Enumerates embedded theme fonts as (folder, filename), e.g. ("Theme/Fonts", "PT Root UI_Regular.ttf"), recording each
+    /// font's exact manifest name for OpenFont.</summary>
     public static IEnumerable<(string Folder, string Filename)> EnumerateFonts()
     {
         Assembly asm = Assembly;
@@ -66,6 +94,9 @@ internal static class NoesisThemeResources
             int lastDot = resource.LastIndexOf('.', resource.Length - 5);
             string folder = lastDot != -1 ? resource.Substring(0, lastDot).Replace('.', '/') : "";
             string filename = lastDot != -1 ? resource.Substring(lastDot + 1) : resource;
+
+            // Record BEFORE yielding: RegisterFont calls OpenFont synchronously.
+            FontManifestNames[$"{folder}/{filename}"] = name;
             yield return (folder, filename);
         }
     }
