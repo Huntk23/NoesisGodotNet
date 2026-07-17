@@ -1,0 +1,16 @@
+# Godot
+.godot/
+*.translation
+export.cfg
+export_presets.cfg
+
+# .NET
+.mono/
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# Noesis SDK drops (if not using NuGet)
+thirdparty/noesis/

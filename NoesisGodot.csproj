@@ -1,0 +1,32 @@
+<Project Sdk="Godot.NET.Sdk/4.7.1">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NoesisGodot</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!--
+      Noesis.GUI ships native assets under legacy RIDs (win10-x64 etc.).
+      .NET 8+ uses the portable RID graph by default and would skip them,
+      so the native Noesis library would never be copied (NETSDK1206).
+      UseRidGraph restores the old RID fallback resolution.
+    -->
+    <UseRidGraph>true</UseRidGraph>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      NoesisGUI managed core (includes native runtime per RID).
+      Requires a Noesis account/license: https://www.noesisengine.com/licensing.php
+      Optional extras:
+        Noesis.GUI.Extensions  - MVVM helpers, WPF-compat attributes
+        Noesis.App             - Application framework (only needed if you want their theme:
+                                 Theme/NoesisTheme.DarkBlue.xaml via GUI.LoadApplicationResources)
+    -->
+    <PackageReference Include="Noesis.GUI" Version="3.2.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="README.md" />
+  </ItemGroup>
+</Project>
