@@ -1,0 +1,14 @@
+[remap]
+
+importer="noesisgodot.xaml"
+type="Resource"
+uid="uid://rp8iakiepo25"
+path="res://.godot/imported/ThemeLab.xaml-17e65cd04290fdf09e003536a8f4e55d.res"
+
+[deps]
+
+source_file="res://examples/HelloNoesis/UI/ThemeLab.xaml"
+dest_files=["res://.godot/imported/ThemeLab.xaml-17e65cd04290fdf09e003536a8f4e55d.res"]
+
+[params]
+

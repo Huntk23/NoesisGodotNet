@@ -19,17 +19,19 @@
     <!--
       NoesisGUI managed core (includes native runtime per RID).
       Requires a Noesis account/license: https://www.noesisengine.com/licensing.php
-      Optional extras:
-        Noesis.GUI.Extensions  - MVVM helpers, WPF-compat attributes
-        Noesis.App             - Application framework (only needed if you want their theme:
-                                 Theme/NoesisTheme.DarkBlue.xaml via GUI.LoadApplicationResources)
     -->
     <PackageReference Include="Noesis.GUI" Version="3.2.*" />
+    <!-- Official theme (implicit styles for all controls), loaded via the
+         'noesis_gui/theme/xaml' setting. NOTE: do NOT use Noesis.GUI.Extensions
+         for this — that's the WPF/Blend design-time package and forces a
+         '-windows' TargetFramework (NETSDK1136). -->
+    <PackageReference Include="Noesis.App.Theme" Version="3.2.*" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="addons\noesisgui\plugin.cfg" />
     <Content Include="examples\HelloNoesis\UI\MainMenu.xaml" />
+    <Content Include="examples\HelloNoesis\UI\ThemeLab.xaml" />
     <Content Include="examples\HelloNoesis\UI\WidgetLab.xaml" />
     <Content Include="README.md" />
   </ItemGroup>

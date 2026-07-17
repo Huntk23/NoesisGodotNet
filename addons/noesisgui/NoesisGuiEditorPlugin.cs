@@ -19,6 +19,7 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         EnsureSetting("noesis_gui/resources/root", "res://UI");
         EnsureSetting("noesis_gui/resources/fonts", "res://UI/Fonts");
         EnsureSetting("noesis_gui/logging/silence_hot_reload", false);
+        EnsureSetting("noesis_gui/theme/xaml", "Theme/NoesisTheme.DarkBlue.xaml");
 
         _xamlImporter = new XamlImportPlugin();
         AddImportPlugin(_xamlImporter);

@@ -4,13 +4,23 @@ using Godot;
 namespace NoesisGodot;
 
 /// <summary>
-/// Exposes .ttf/.otf files under 'noesis_gui/resources/fonts' (and any folder referenced by XAML font URIs)
-/// to Noesis text rendering.
+/// Exposes .ttf/.otf files under 'noesis_gui/resources/fonts' (and any folder referenced by XAML font URIs) to Noesis text rendering.
 ///
 /// XAML usage: FontFamily="./#My Font Name"  (family name, not filename - same convention as WPF/Noesis).
 /// </summary>
 public class GodotFontProvider : Noesis.FontProvider
 {
+    public GodotFontProvider()
+    {
+        // Register the official theme's embedded fonts (PT Root UI etc.) so themed text renders as designed. No-op if the package is absent.
+        foreach ((string folder, string filename) in NoesisThemeResources.EnumerateFonts())
+        {
+            RegisterFont(new System.Uri(folder, System.UriKind.RelativeOrAbsolute), filename);
+        }
+    }
+
+    // NOTE: newer SDKs (post-3.2) normalize base URIs by overriding MatchFont/FamilyExists (returning Noesis.FontSource); that type doesn't exist
+    // in 3.2.x, so we rely on the base implementation's matching. If theme fonts ever fall back to Arial, revisit this against the SDK version.
     public override void ScanFolder(System.Uri folder)
     {
         string resFolder = ResolveFolder(folder);
@@ -38,6 +48,15 @@ public class GodotFontProvider : Noesis.FontProvider
 
     public override Stream OpenFont(System.Uri folder, string filename)
     {
+        // Embedded theme fonts first: their folder ("Theme/Fonts") is not a res:// location.
+        string rawFolder = folder == null ? "" : GodotResourceUtil.GetRawPath(folder);
+        Stream themeFont = NoesisThemeResources.OpenFont(
+            string.IsNullOrEmpty(rawFolder) ? filename : $"{rawFolder.TrimEnd('/')}/{filename}");
+        if (themeFont != null)
+        {
+            return themeFont;
+        }
+
         string resFolder = ResolveFolder(folder);
         return GodotResourceUtil.OpenRead($"{resFolder.TrimEnd('/')}/{filename}", "Font");
     }

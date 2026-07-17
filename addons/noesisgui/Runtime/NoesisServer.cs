@@ -77,9 +77,25 @@ public static class NoesisServer
             Noesis.GUI.SetFontDefaultProperties(15.0f,
                 Noesis.FontWeight.Normal, Noesis.FontStretch.Normal, Noesis.FontStyle.Normal);
 
-            // Optional: load the Noesis theme so implicit control styles exist.
-            // Requires the Noesis.App theme package. Without a theme (or your own ResourceDictionary), templated controls like Button need explicit styles.
-            // Noesis.GUI.LoadApplicationResources("Theme/NoesisTheme.DarkBlue.xaml");
+            // Theme: implicit styles/templates for all controls. Without one, untemplated controls render as Noesis's pink fallback.
+            // Default is the official theme embedded in Noesis.GUI.Extensions; set the project setting to "" to opt out, or point it at your own
+            // ResourceDictionary (res:// paths work through the providers). Read directly (not GetSetting): an explicit EMPTY value means
+            // "no theme", which GetSetting would override with the fallback.
+            string theme = ProjectSettings.HasSetting("noesis_gui/theme/xaml")
+                ? (string)ProjectSettings.GetSetting("noesis_gui/theme/xaml")
+                : "Theme/NoesisTheme.DarkBlue.xaml";
+            if (!string.IsNullOrEmpty(theme))
+            {
+                try
+                {
+                    Noesis.GUI.LoadApplicationResources(theme);
+                }
+                catch (Exception e)
+                {
+                    GD.PushWarning($"[NoesisGUI] Failed to load theme '{theme}': {e.Message}. " +
+                                   "Controls without explicit templates will render pink.");
+                }
+            }
 
             _initialized = true;
             GD.Print("[NoesisGUI] Initialized.");

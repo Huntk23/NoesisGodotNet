@@ -52,6 +52,10 @@ GetNode<NoesisView>("NoesisView").ViewModel = new MainMenuViewModel();
 
 The ViewModel is plain .NET. `INotifyPropertyChanged`, `ICommand`, zero engine types - so the same UI + logic previews in Noesis Studio and unit-tests outside Godot.
 
+### Theme
+
+The official Noesis theme loads by default (embedded in the `Noesis.App.Theme` package), so every standard control - TextBox, Slider, ComboBox, ScrollViewer, ProgressBar has proper styles out of the box. `noesis_gui/theme/xaml` controls it: the default `Theme/NoesisTheme.DarkBlue.xaml`, another variant like `Theme/NoesisTheme.LightBlue.xaml`, a path to your own ResourceDictionary (relative to the resources root or `res://`), or empty to opt out (then untemplated controls render as Noesis's pink fallback). See `examples/ThemeShowcase/`.
+
 ### XAML hot-reload
 
 When running from the editor, the plugin watches `noesis_gui/resources/root` for `.xaml` changes. Save a file in Noesis Studio, Rider, anywhere, and the running game updates live: resource dictionaries and templates refresh via Noesis's reload mechanism, and any `NoesisView` whose root document changed is rebuilt in place with its ViewModel preserved. Invalid markup mid-edit is tolerated (the last good view stays up with a warning). Exported builds skip all of this.
@@ -71,6 +75,7 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 
 ## Roadmap
 
+0. ~~Theme integration~~ (done in 0.4)
 1. Zero-copy Compatibility path (share Godot's GL context, render into an FBO-backed Godot texture)
 2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
 3. Editor QoL: XAML preview in the editor, Noesis Studio "open in" button (hot-reload and `.xaml` import: done in 0.2)

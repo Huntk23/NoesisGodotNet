@@ -30,6 +30,13 @@ public class GodotXamlProvider : Noesis.XamlProvider
             return new MemoryStream(Encoding.UTF8.GetBytes(xamlFile.Source), writable: false);
         }
 
+        // Embedded official theme (Noesis.App.Theme assembly), e.g. "Theme/NoesisTheme.DarkBlue.xaml" and the dictionaries it merges.
+        Stream themeStream = NoesisThemeResources.OpenXaml(GodotResourceUtil.GetRawPath(uri));
+        if (themeStream != null)
+        {
+            return themeStream;
+        }
+
         GD.PushWarning($"[NoesisGUI] XAML not found: {resPath}");
         return null;
     }
@@ -41,8 +48,14 @@ public static class GodotResourceUtil
     public static string ToResPath(System.Uri uri)
     {
         // Noesis passes relative URIs like "MainMenu.xaml" or "Images/logo.png", possibly with a leading '/'. Absolute res:// paths pass through.
+        return ToResPath(GetRawPath(uri));
+    }
+
+    /// <summary>Normalized relative path from a Noesis URI ("Theme/NoesisTheme.DarkBlue.xaml").</summary>
+    public static string GetRawPath(System.Uri uri)
+    {
         string raw = uri.IsAbsoluteUri ? uri.AbsolutePath : uri.OriginalString;
-        return ToResPath(raw);
+        return raw.Replace('\\', '/').TrimStart('/');
     }
 
     public static string ToResPath(string raw)

@@ -30,3 +30,4 @@ enabled=PackedStringArray("res://addons/noesisgui/plugin.cfg")
 
 resources/root="res://examples/HelloNoesis/UI"
 resources/fonts="res://examples/HelloNoesis/UI/Fonts"
+theme/xaml="Theme/NoesisTheme.DarkBlue.xaml"
