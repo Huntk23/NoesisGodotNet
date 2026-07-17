@@ -22,6 +22,8 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         EnsureSetting("noesis_gui/theme/xaml", "Theme/NoesisTheme.DarkBlue.xaml");
         // Path to NoesisStudio.exe; empty = use the OS file association for .xaml.
         EnsureSetting("noesis_gui/editor/studio_path", "");
+        // Zero-copy rendering under the Compatibility (GL) renderer; falls back to CPU readback automatically when unsupported (Forward+, threaded GL).
+        EnsureSetting("noesis_gui/rendering/zero_copy", true);
 
         _xamlImporter = new XamlImportPlugin();
         AddImportPlugin(_xamlImporter);

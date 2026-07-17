@@ -20,7 +20,7 @@ namespace NoesisGodot;
 ///
 /// Context-current pattern mirrors NoesisApp's RenderContextWGL (https://github.com/Noesis/Managed).
 /// </summary>
-public sealed class OffscreenGLBackend : IDisposable
+public sealed class OffscreenGLBackend : INoesisRenderBackend
 {
     private IntPtr _hwnd = IntPtr.Zero;
     private IntPtr _hdc = IntPtr.Zero;
@@ -37,10 +37,14 @@ public sealed class OffscreenGLBackend : IDisposable
     private byte[] _readback;   // raw glReadPixels output (bottom-up)
     private byte[] _flipped;    // row-flipped RGBA for Godot
     private Image _image;
+    private ImageTexture _texture;
 
     private BindFramebufferProc _glBindFramebuffer;
 
     public Noesis.RenderDevice Device => _device;
+
+    /// <summary>Readback path flips rows on the CPU, so output is upright.</summary>
+    public bool OutputIsFlipped => false;
 
     public void Init(int width, int height)
     {
@@ -103,9 +107,27 @@ public sealed class OffscreenGLBackend : IDisposable
         AllocateBuffers();
     }
 
-    /// <summary>Ticks and renders the view, returns the frame as a Godot Image (reused between calls,
-    /// upload it before the next RenderFrame).</summary>
-    public Image RenderFrame(Noesis.View view, double timeSeconds)
+    /// <summary>Ticks and renders the view, uploads the readback into an ImageTexture and returns it.</summary>
+    public Texture2D RenderFrame(Noesis.View view, double timeSeconds)
+    {
+        Image frame = RenderImage(view, timeSeconds);
+        if (frame == null)
+        {
+            return null;
+        }
+
+        if (_texture == null || _texture.GetSize() != frame.GetSize())
+        {
+            _texture = ImageTexture.CreateFromImage(frame);
+        }
+        else
+        {
+            _texture.Update(frame);
+        }
+        return _texture;
+    }
+
+    private Image RenderImage(Noesis.View view, double timeSeconds)
     {
         if (_device == null)
         {
@@ -154,8 +176,8 @@ public sealed class OffscreenGLBackend : IDisposable
         return _image;
     }
 
-    /// <summary>Makes the backend's GL context current, saving whatever context the caller had
-    /// (Godot Compatibility renderer owns one on this thread!).</summary>
+    /// <summary>Makes the backend's GL context current, saving whatever context the caller had (Godot Compatibility renderer owns one on
+    /// this thread!).</summary>
     public void BeginContext()
     {
         _savedDc = wglGetCurrentDC();

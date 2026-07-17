@@ -14,11 +14,14 @@ public sealed class NoesisViewHost : IDisposable
     public Noesis.FrameworkElement Root { get; private set; }
 
     /// <summary>The rendered frame. The instance is replaced on resize — re-read after RenderFrame().</summary>
-    public ImageTexture Texture { get; private set; }
+    public Texture2D Texture { get; private set; }
+
+    /// <summary>True, when the backend renders GPU-side (zero-copy) and the output is bottom-up; the displaying node compensates (FlipV/UV scale).</summary>
+    public bool OutputIsFlipped => _backend?.OutputIsFlipped ?? false;
 
     public bool IsValid => View != null && _backend != null;
 
-    private OffscreenGLBackend _backend;
+    private INoesisRenderBackend _backend;
     private Vector2I _size;
     private ulong _startTicksMs;
     private object _viewModel;
@@ -83,8 +86,7 @@ public sealed class NoesisViewHost : IDisposable
         View = Noesis.GUI.CreateView(Root);
         View.SetSize(_size.X, _size.Y);
 
-        _backend = new OffscreenGLBackend();
-        _backend.Init(_size.X, _size.Y);
+        _backend = CreateBackend();
 
         // Renderer must be initialized with our GL context current.
         _backend.BeginContext();
@@ -102,6 +104,31 @@ public sealed class NoesisViewHost : IDisposable
         return true;
     }
 
+    /// <summary>Picks the fastest backend the current configuration supports.</summary>
+    private INoesisRenderBackend CreateBackend()
+    {
+        bool wantZeroCopy = NoesisServer.GetSettingBool("noesis_gui/rendering/zero_copy", true);
+        if (wantZeroCopy && SharedGLBackend.IsSupported())
+        {
+            var shared = new SharedGLBackend();
+            try
+            {
+                shared.Init(_size.X, _size.Y);
+                return shared;
+            }
+            catch (Exception e)
+            {
+                shared.Dispose();
+                GD.PushWarning($"[NoesisGUI] {_ownerName}: zero-copy GL init failed, " +
+                               $"falling back to readback: {e.Message}");
+            }
+        }
+
+        var offscreen = new OffscreenGLBackend();
+        offscreen.Init(_size.X, _size.Y);
+        return offscreen;
+    }
+
     /// <summary>Ticks and renders one frame into Texture. Returns false if not initialized.</summary>
     public bool RenderFrame()
     {
@@ -111,20 +138,13 @@ public sealed class NoesisViewHost : IDisposable
         }
 
         double t = (Time.GetTicksMsec() - _startTicksMs) / 1000.0;
-        Image frame = _backend.RenderFrame(View, t);
+        Texture2D frame = _backend.RenderFrame(View, t);
         if (frame == null)
         {
             return false;
         }
 
-        if (Texture == null || Texture.GetSize() != frame.GetSize())
-        {
-            Texture = ImageTexture.CreateFromImage(frame);
-        }
-        else
-        {
-            Texture.Update(frame);
-        }
+        Texture = frame;
         return true;
     }
 

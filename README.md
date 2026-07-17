@@ -89,10 +89,19 @@ Godot `_Process` → Noesis `View.Update` → render on a private offscreen GL c
 
 The offscreen-context design works identically under **Forward+ (Vulkan)** and **Compatibility (GL)** and can never corrupt Godot's render state. The cost is a GPU→CPU copy per frame which is perfectly fine for menus/HUDs; zero-copy paths are the top roadmap item.
 
+## Rendering backends
+
+The plugin picks the fastest backend at startup, per view:
+
+- **Zero-copy (Compatibility/GL renderer)**: a second GL context shared with Godot's renders Noesis directly into a Godot-owned texture via FBO — no per-frame CPU copy. Requires single-threaded Compatibility rendering (the default). Disable with `noesis_gui/rendering/zero_copy` if needed.
+- **Readback (everything else)**: private GL context + `glReadPixels` + texture upload. Works under Forward+/Mobile (Vulkan) and threaded GL. Fine for menus/HUDs.
+
+The startup log prints which backend each view got.
+
 ## Roadmap
 
 0. ~~Theme integration~~ (done in 0.4)
-1. Zero-copy Compatibility path (share Godot's GL context, render into an FBO-backed Godot texture)
+1. ~~Zero-copy Compatibility path~~ (done in 0.7)
 2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
 3. Editor QoL: XAML preview in the editor (hot-reload + import: 0.2; error overlay, cursor forwarding, gamepad, Studio button: 0.6)
 4. ~~World-space UI~~ (done in 0.5: `NoesisView3D`)

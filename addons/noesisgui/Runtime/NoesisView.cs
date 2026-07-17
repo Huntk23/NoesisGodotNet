@@ -57,6 +57,9 @@ public partial class NoesisView : TextureRect
             return;
         }
 
+        // Zero-copy backend renders GPU-side (bottom-up); readback is upright.
+        FlipV = _host.OutputIsFlipped;
+
         Resized += OnResized;
         // Activation drives focus visuals (caret blink, active selection).
         // Tied to Godot focus so exactly one view shows a caret at a time.

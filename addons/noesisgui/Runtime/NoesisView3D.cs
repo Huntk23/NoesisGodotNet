@@ -69,6 +69,13 @@ public partial class NoesisView3D : StaticBody3D
                 : BaseMaterial3D.CullModeEnum.Back,
         };
 
+        // Zero-copy backend renders GPU-side (bottom-up); flip sampling.
+        if (_host.OutputIsFlipped)
+        {
+            _material.Uv1Scale = new Vector3(1f, -1f, 1f);
+            _material.Uv1Offset = new Vector3(0f, 1f, 0f);
+        }
+
         _meshInstance = new MeshInstance3D
         {
             Mesh = new QuadMesh { Size = PanelSize },
