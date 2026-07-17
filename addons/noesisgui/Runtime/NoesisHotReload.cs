@@ -87,6 +87,21 @@ public static class NoesisHotReload
         bool silenced = Silenced;
         foreach (string rel in batch)
         {
+            // Validate BEFORE notifying Noesis: RaiseXamlChanged makes Noesis reparse the file internally, and broken markup blanks live
+            // views. A failed parse here keeps the last good state on screen.
+            try
+            {
+                Noesis.GUI.LoadXaml(rel);
+            }
+            catch (Exception e)
+            {
+                if (!silenced)
+                {
+                    GD.PushWarning($"[NoesisGUI] '{rel}' has invalid XAML, keeping previous view: {e.Message}");
+                }
+                continue;
+            }
+
             if (!silenced)
             {
                 GD.Print($"[NoesisGUI] Hot-reloading '{rel}'");

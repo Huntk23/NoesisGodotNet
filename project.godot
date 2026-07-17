@@ -28,7 +28,5 @@ enabled=PackedStringArray("res://addons/noesisgui/plugin.cfg")
 
 [noesis_gui]
 
-license/name=""
-license/key=""
 resources/root="res://examples/HelloNoesis/UI"
 resources/fonts="res://examples/HelloNoesis/UI/Fonts"

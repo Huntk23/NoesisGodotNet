@@ -63,6 +63,8 @@ public partial class NoesisView : TextureRect
         };
         Material = material;
         StretchMode = StretchModeEnum.Scale;
+        // Default KeepSize would make the frame texture dictate our minimum size, fighting container layout on every resize.
+        ExpandMode = ExpandModeEnum.IgnoreSize;
         FocusMode = FocusModeEnum.All;
         MouseFilter = MouseFilterEnum.Stop;
 
@@ -112,8 +114,18 @@ public partial class NoesisView : TextureRect
 
         _startTicksMs = Time.GetTicksMsec();
         Resized += OnResized;
+        // Activation drives focus visuals (caret blink, active selection). Tied to Godot focus so exactly one view shows a caret at a time.
+        FocusEntered += OnFocusEntered;
+        FocusExited += OnFocusExited;
+        if (HasFocus())
+        {
+            _view.Activate();
+        }
         NoesisHotReload.Register(this);
     }
+
+    private void OnFocusEntered() => _view?.Activate();
+    private void OnFocusExited() => _view?.Deactivate();
 
     public override void _Process(double delta)
     {
@@ -205,6 +217,10 @@ public partial class NoesisView : TextureRect
             _backend.EndContext();
         }
 
+        if (HasFocus())
+        {
+            _view.Activate();
+        }
         _redrawRequested = true;
     }
     

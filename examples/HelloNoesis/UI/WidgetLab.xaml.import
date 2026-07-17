@@ -1,0 +1,14 @@
+[remap]
+
+importer="noesisgodot.xaml"
+type="Resource"
+uid="uid://b4674ly1gsj3m"
+path="res://.godot/imported/WidgetLab.xaml-69eb8bd12528e9be06de9fa4093bda3a.res"
+
+[deps]
+
+source_file="res://examples/HelloNoesis/UI/WidgetLab.xaml"
+dest_files=["res://.godot/imported/WidgetLab.xaml-69eb8bd12528e9be06de9fa4093bda3a.res"]
+
+[params]
+

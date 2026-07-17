@@ -1,10 +1,11 @@
 <Project Sdk="Godot.NET.Sdk/4.7.1">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
     <RootNamespace>NoesisGodot</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
     <!--
       Noesis.GUI ships native assets under legacy RIDs (win10-x64 etc.).
       .NET 8+ uses the portable RID graph by default and would skip them,
@@ -27,7 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="addons\noesisgui\plugin.cfg" />
     <Content Include="examples\HelloNoesis\UI\MainMenu.xaml" />
+    <Content Include="examples\HelloNoesis\UI\WidgetLab.xaml" />
     <Content Include="README.md" />
   </ItemGroup>
 </Project>
