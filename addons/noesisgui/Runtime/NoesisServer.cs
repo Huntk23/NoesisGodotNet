@@ -4,8 +4,7 @@ using Godot;
 namespace NoesisGodot;
 
 /// <summary>
-/// Global NoesisGUI initialization: license, log routing, resource providers. Called lazily by the first NoesisView;
-/// safe to call multiple times.
+/// Global NoesisGUI initialization: license, log routing, resource providers. Called lazily by the first NoesisView; safe to call multiple times.
 /// </summary>
 public static class NoesisServer
 {
@@ -51,6 +50,10 @@ public static class NoesisServer
                 switch (level)
                 {
                     case Noesis.LogLevel.Error:
+                        // Tracked so hot-reload can detect lenient parse errors: Noesis logs (not throws) on e.g., a malformed tag and
+                        // returns a truncated tree.
+                        LogErrorCount++;
+                        LastLogError = message;
                         GD.PushError($"[Noesis] {message}");
                         break;
                     case Noesis.LogLevel.Warning:
@@ -71,6 +74,13 @@ public static class NoesisServer
             Noesis.GUI.SetXamlProvider(_xamlProvider);
             Noesis.GUI.SetTextureProvider(new GodotTextureProvider());
             Noesis.GUI.SetFontProvider(new GodotFontProvider());
+
+            // Cursor forwarding: the UI tells us which mouse cursor it wants (I-beam over text boxes, hand over hyperlinks); the owning host
+            // routes it to its Godot node.
+            Noesis.GUI.SetCursorCallback((view, cursor) =>
+            {
+                NoesisHotReload.FindByView(view)?.NotifyCursor(NoesisInputMapper.MapCursor(cursor));
+            });
 
             // Sensible text defaults (mirrors Noesis samples).
             Noesis.GUI.SetFontFallbacks(["Arial", "Segoe UI Emoji"]);
@@ -103,6 +113,9 @@ public static class NoesisServer
 
         NoesisHotReload.Start(_xamlProvider);
     }
+
+    internal static int LogErrorCount;
+    internal static string LastLogError = "";
 
     internal static bool GetSettingBool(string name, bool fallback)
     {

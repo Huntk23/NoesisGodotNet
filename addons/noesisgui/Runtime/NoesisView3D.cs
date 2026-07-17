@@ -35,6 +35,7 @@ public partial class NoesisView3D : StaticBody3D
     private MeshInstance3D _meshInstance;
     private StandardMaterial3D _material;
     private Vector2I _pixelSize;
+    private bool _hovered;
 
     public object ViewModel
     {
@@ -82,6 +83,22 @@ public partial class NoesisView3D : StaticBody3D
         AddChild(collision);
 
         InputRayPickable = true;
+
+        // Cursor forwarding, scoped to hover (a 3D panel doesn't own a screen region the way a Control does, so we set the global cursor and reset
+        // it when the mouse leaves the collider).
+        MouseEntered += () => _hovered = true;
+        MouseExited += () =>
+        {
+            _hovered = false;
+            Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
+        };
+        _host.CursorChanged += shape =>
+        {
+            if (_hovered)
+            {
+                Input.SetDefaultCursorShape((Input.CursorShape)(int)shape);
+            }
+        };
     }
 
     public override void _Process(double delta)
@@ -153,32 +170,49 @@ public partial class NoesisView3D : StaticBody3D
         }
     }
 
-    /// <summary>Keyboard for the focused panel (keys aren't position-based, so they don't come through ray picking).</summary>
+    /// <summary>Keyboard and gamepad for the focused panel (neither is position-based, so they don't come through ray picking).</summary>
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (_keyboardOwner != this || !_host.IsValid || @event is not InputEventKey key)
+        if (_keyboardOwner != this || !_host.IsValid)
         {
             return;
         }
 
-        Noesis.Key nsKey = NoesisInputMapper.MapKey(key.Keycode);
         bool handled = false;
 
-        if (key.Pressed)
+        switch (@event)
         {
-            if (nsKey != Noesis.Key.None)
+            case InputEventKey key:
             {
-                handled |= _host.View.KeyDown(nsKey);
+                Noesis.Key nsKey = NoesisInputMapper.MapKey(key.Keycode);
+                if (key.Pressed)
+                {
+                    if (nsKey != Noesis.Key.None)
+                    {
+                        handled |= _host.View.KeyDown(nsKey);
+                    }
+                    if (key.Unicode != 0)
+                    {
+                        handled |= _host.View.Char((uint)key.Unicode);
+                    }
+                }
+                else if (nsKey != Noesis.Key.None)
+                {
+                    _host.View.KeyUp(nsKey);
+                    handled = true;
+                }
+                break;
             }
-            if (key.Unicode != 0)
+
+            case InputEventJoypadButton joy:
             {
-                handled |= _host.View.Char((uint)key.Unicode);
+                Noesis.Key nsKey = NoesisInputMapper.MapJoyButton(joy.ButtonIndex);
+                if (nsKey != Noesis.Key.None)
+                {
+                    handled = joy.Pressed ? _host.View.KeyDown(nsKey) : _host.View.KeyUp(nsKey);
+                }
+                break;
             }
-        }
-        else if (nsKey != Noesis.Key.None)
-        {
-            _host.View.KeyUp(nsKey);
-            handled = true;
         }
 
         if (handled)

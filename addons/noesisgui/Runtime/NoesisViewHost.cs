@@ -38,6 +38,19 @@ public sealed class NoesisViewHost : IDisposable
         }
     }
 
+    /// <summary>Raised when a hot-reload attempt fails to parse (the last good view stays up).</summary>
+    public event Action<string> ReloadFailed;
+
+    /// <summary>Raised after a successful XAML hot-reload.</summary>
+    public event Action ReloadSucceeded;
+
+    /// <summary>Raised when the UI requests a mouse cursor (I-beam over text, hand over links).</summary>
+    public event Action<Control.CursorShape> CursorChanged;
+
+    internal void NotifyCursor(Control.CursorShape shape) => CursorChanged?.Invoke(shape);
+
+    internal void NotifyReloadFailed(string message) => ReloadFailed?.Invoke(message);
+
     public bool Init(string xaml, Vector2I size, string ownerName)
     {
         _ownerName = ownerName;
@@ -152,6 +165,7 @@ public sealed class NoesisViewHost : IDisposable
             {
                 GD.PushWarning($"[NoesisGUI] {_ownerName}: reload of '{Xaml}' failed, keeping previous view: {e.Message}");
             }
+            ReloadFailed?.Invoke(e.Message);
             return;
         }
 
@@ -183,6 +197,8 @@ public sealed class NoesisViewHost : IDisposable
         {
             _backend.EndContext();
         }
+
+        ReloadSucceeded?.Invoke();
     }
 
     public void Dispose()

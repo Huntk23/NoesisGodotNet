@@ -23,6 +23,7 @@ public partial class NoesisView : TextureRect
 
     private readonly NoesisViewHost _host = new();
     private bool _redrawRequested = true;
+    private Label _errorOverlay;
 
     /// <summary>WPF-style DataContext for the root element. Accepts any CLR object (INotifyPropertyChanged recommended).
     /// Can be set before or after _Ready.</summary>
@@ -64,6 +65,46 @@ public partial class NoesisView : TextureRect
         if (HasFocus())
         {
             _host.Activate();
+        }
+
+        _host.CursorChanged += shape => MouseDefaultCursorShape = shape;
+        _host.ReloadFailed += ShowReloadError;
+        _host.ReloadSucceeded += HideReloadError;
+    }
+
+    private void ShowReloadError(string message)
+    {
+        if (_errorOverlay == null)
+        {
+            _errorOverlay = new Label
+            {
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            _errorOverlay.AddThemeColorOverride("font_color", new Color(1f, 0.62f, 0.62f));
+            _errorOverlay.AddThemeStyleboxOverride("normal", new StyleBoxFlat
+            {
+                BgColor = new Color(0.12f, 0f, 0f, 0.88f),
+                ContentMarginLeft = 12,
+                ContentMarginRight = 12,
+                ContentMarginTop = 8,
+                ContentMarginBottom = 8,
+            });
+            AddChild(_errorOverlay);
+            // Full-width strip hugging the bottom edge, growing UPWARD as the message wraps (plain BottomWide pins a zero-height rect at the
+            // edge and the text renders below the view — invisible).
+            _errorOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
+            _errorOverlay.GrowVertical = GrowDirection.Begin;
+        }
+        _errorOverlay.Text = $"XAML error in '{Xaml}' (showing last good view):\n{message}";
+        _errorOverlay.Visible = true;
+    }
+
+    private void HideReloadError()
+    {
+        if (_errorOverlay != null)
+        {
+            _errorOverlay.Visible = false;
         }
     }
 
@@ -121,6 +162,28 @@ public partial class NoesisView : TextureRect
         if (@event is InputEventMouseButton { Pressed: true })
         {
             GrabFocus(); // route subsequent keyboard input here
+        }
+    }
+
+    /// <summary>Gamepad navigation for the focused view (joypad events don't route through _GuiInput).</summary>
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (!HasFocus() || !_host.IsValid || @event is not InputEventJoypadButton joy)
+        {
+            return;
+        }
+
+        Noesis.Key key = NoesisInputMapper.MapJoyButton(joy.ButtonIndex);
+        if (key == Noesis.Key.None)
+        {
+            return;
+        }
+
+        bool handled = joy.Pressed ? _host.View.KeyDown(key) : _host.View.KeyUp(key);
+        if (handled)
+        {
+            _redrawRequested = true;
+            GetViewport().SetInputAsHandled();
         }
     }
 

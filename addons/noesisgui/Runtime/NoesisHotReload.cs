@@ -9,9 +9,8 @@ namespace NoesisGodot;
 /// <summary>
 /// XAML hot-reload: watches the resource root for .xaml changes (editor-run builds only).
 ///
-/// Flow: FileSystemWatcher thread enqueues changed paths → NoesisView calls Pump() once per frame on the main thread ->
-/// we notify Noesis via XamlProvider.RaiseXamlChanged (updates ResourceDictionaries, styles, templates) and fully reload
-/// any NoesisView, whose root XAML changed.
+/// Flow: FileSystemWatcher thread enqueues changed paths → NoesisView calls Pump() once per frame on the main thread -> we notify Noesis via
+/// XamlProvider.RaiseXamlChanged (updates ResourceDictionaries, styles, templates) and fully reload any NoesisView, whose root XAML changed.
 /// </summary>
 public static class NoesisHotReload
 {
@@ -54,6 +53,20 @@ public static class NoesisHotReload
     public static void Register(NoesisViewHost host) => Hosts.Add(host);
     public static void Unregister(NoesisViewHost host) => Hosts.Remove(host);
 
+    /// <summary>Find the host owning a Noesis view (used to route cursor callbacks).</summary>
+    internal static NoesisViewHost FindByView(Noesis.View view)
+    {
+        foreach (NoesisViewHost host in Hosts)
+        {
+            // Managed proxies compare by underlying native instance.
+            if (host.View == view || (host.View?.Equals(view) ?? false))
+            {
+                return host;
+            }
+        }
+        return null;
+    }
+
     /// <summary>Project Settings → NoesisGUI → Logging → Silence Hot Reload.</summary>
     internal static bool Silenced =>
         NoesisServer.GetSettingBool("noesis_gui/logging/silence_hot_reload", false);
@@ -87,17 +100,40 @@ public static class NoesisHotReload
         bool silenced = Silenced;
         foreach (string rel in batch)
         {
-            // Validate BEFORE notifying Noesis: RaiseXamlChanged makes Noesis reparse the file internally, and broken markup blanks live
-            // views. A failed parse here keeps the last good state on screen.
+            // Validate BEFORE notifying Noesis: RaiseXamlChanged makes Noesis reparse the file internally, and broken markup blanks live views.
+            // A failed parse here keeps the last good state on screen. Noesis's parser is LENIENT (e.g., a malformed tag) don't throw; they're
+            // logged and yield a truncated tree. So we also treat any Error-level Noesis log during the parse as a validation failure.
+            string parseError = null;
+            int errorsBefore = NoesisServer.LogErrorCount;
             try
             {
-                Noesis.GUI.LoadXaml(rel);
+                object parsed = Noesis.GUI.LoadXaml(rel);
+                if (parsed == null)
+                {
+                    parseError = "file not found or empty";
+                }
+                else if (NoesisServer.LogErrorCount != errorsBefore)
+                {
+                    parseError = NoesisServer.LastLogError;
+                }
             }
             catch (Exception e)
             {
+                parseError = e.Message;
+            }
+
+            if (parseError != null)
+            {
                 if (!silenced)
                 {
-                    GD.PushWarning($"[NoesisGUI] '{rel}' has invalid XAML, keeping previous view: {e.Message}");
+                    GD.PushWarning($"[NoesisGUI] '{rel}' has invalid XAML, keeping previous view: {parseError}");
+                }
+                foreach (NoesisViewHost host in Hosts)
+                {
+                    if (MatchesXaml(host.Xaml, rel))
+                    {
+                        host.NotifyReloadFailed(parseError);
+                    }
                 }
                 continue;
             }

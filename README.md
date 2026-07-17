@@ -65,6 +65,13 @@ The official Noesis theme loads by default (embedded in the `Noesis.App.Theme` p
 - *Apparent size*: a panel fills the screen vertically when `PanelSize.y ≈ 2 × distance × tan(fov/2)`. The example uses a 0.9m-tall panel at 0.9m with a 60° FOV (~87% of screen height).
 - *Crispness vs. cost*: pick `PixelsPerMeter` so the texture roughly matches the panel's on-screen pixel size at typical viewing distance. Too low looks soft; too high wastes render + readback bandwidth every frame. The XAML's own layout matters too - a fixed-width column designed for fullscreen 2D will occupy only part of a wide panel (wrap content in a `Viewbox` if you want it to scale to fill instead).
 
+### Editor & UX niceties
+
+- **Broken-XAML overlay**: if a hot-reload save has invalid markup, the running view keeps the last good frame and shows the parse error in an overlay strip; it clears on the next successful save.
+- **Cursor forwarding**: the OS cursor follows the UI (I-beam over text boxes, hand over hyperlinks) - in 3D, scoped to while the panel is hovered.
+- **Gamepad**: joypad buttons map to Noesis gamepad navigation keys (D-pad focus movement, A/B accept/cancel, shoulder page) on the focused view/panel.
+- **Project → Tools → Open Selected XAML in Noesis Studio**: opens the FileSystem-dock selection in Studio. Set `noesis_gui/editor/studio_path` to the Studio executable, or leave empty to use the OS `.xaml` association.
+
 ### XAML hot-reload
 
 When running from the editor, the plugin watches `noesis_gui/resources/root` for `.xaml` changes. Save a file in Noesis Studio, Rider, anywhere, and the running game updates live: resource dictionaries and templates refresh via Noesis's reload mechanism, and any `NoesisView` whose root document changed is rebuilt in place with its ViewModel preserved. Invalid markup mid-edit is tolerated (the last good view stays up with a warning). Exported builds skip all of this.
@@ -87,7 +94,7 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 0. ~~Theme integration~~ (done in 0.4)
 1. Zero-copy Compatibility path (share Godot's GL context, render into an FBO-backed Godot texture)
 2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
-3. Editor QoL: XAML preview in the editor, Noesis Studio "open in" button (hot-reload and `.xaml` import: done in 0.2)
+3. Editor QoL: XAML preview in the editor (hot-reload + import: 0.2; error overlay, cursor forwarding, gamepad, Studio button: 0.6)
 4. ~~World-space UI~~ (done in 0.5: `NoesisView3D`)
 5. Linux/macOS render backends (EGL/GLX/NSGL variants of the WGL pattern)
 6. C++ GDExtension core for GDScript users (same architecture, native)

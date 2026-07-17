@@ -20,17 +20,48 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         EnsureSetting("noesis_gui/resources/fonts", "res://UI/Fonts");
         EnsureSetting("noesis_gui/logging/silence_hot_reload", false);
         EnsureSetting("noesis_gui/theme/xaml", "Theme/NoesisTheme.DarkBlue.xaml");
+        // Path to NoesisStudio.exe; empty = use the OS file association for .xaml.
+        EnsureSetting("noesis_gui/editor/studio_path", "");
 
         _xamlImporter = new XamlImportPlugin();
         AddImportPlugin(_xamlImporter);
+
+        AddToolMenuItem(StudioMenuLabel, Callable.From(OpenSelectedXamlInStudio));
     }
 
     public override void _ExitTree()
     {
+        RemoveToolMenuItem(StudioMenuLabel);
         if (_xamlImporter != null)
         {
             RemoveImportPlugin(_xamlImporter);
             _xamlImporter = null;
+        }
+    }
+
+    private const string StudioMenuLabel = "Open Selected XAML in Noesis Studio";
+
+    private static void OpenSelectedXamlInStudio()
+    {
+        string[] selected = EditorInterface.Singleton.GetSelectedPaths();
+        string xaml = System.Array.Find(selected ?? [],
+            p => p.EndsWith(".xaml", System.StringComparison.OrdinalIgnoreCase));
+        if (xaml == null)
+        {
+            GD.PushWarning("[NoesisGUI] Select a .xaml file in the FileSystem dock first.");
+            return;
+        }
+
+        string globalPath = ProjectSettings.GlobalizePath(xaml);
+        string studio = (string)ProjectSettings.GetSetting("noesis_gui/editor/studio_path", "");
+
+        if (!string.IsNullOrEmpty(studio))
+        {
+            OS.CreateProcess(studio, [globalPath]);
+        }
+        else
+        {
+            OS.ShellOpen(globalPath); // OS association (Noesis Studio registers .xaml)
         }
     }
 

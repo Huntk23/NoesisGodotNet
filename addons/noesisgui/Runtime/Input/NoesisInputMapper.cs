@@ -3,8 +3,8 @@ using Godot;
 namespace NoesisGodot;
 
 /// <summary>
-/// Translates Godot input events into Noesis view input. Positions from _GuiInput are already in Control-local coordinates,
-/// which match the Noesis view surface 1:1 (NoesisView keeps view size == control size).
+/// Translates Godot input events into Noesis view input. Positions from _GuiInput are already in Control-local coordinates, which match
+/// the Noesis view surface 1:1 (NoesisView keeps view size == control size).
 /// </summary>
 public static class NoesisInputMapper
 {
@@ -128,6 +128,43 @@ public static class NoesisInputMapper
         float factor = b.Factor > 0f ? b.Factor : 1f;
         return (int)(120f * factor);
     }
+
+    /// <summary>Noesis cursor request → Godot cursor shape. NOTE: 3.2 managed passes a Cursor object with a Type property; if your
+    /// SDK version passes the enum directly, switch on 'cursor' instead.</summary>
+    public static Control.CursorShape MapCursor(Noesis.Cursor cursor) => cursor.Type switch
+    {
+        Noesis.CursorType.IBeam => Control.CursorShape.Ibeam,
+        Noesis.CursorType.Hand => Control.CursorShape.PointingHand,
+        Noesis.CursorType.SizeWE => Control.CursorShape.Hsize,
+        Noesis.CursorType.SizeNS => Control.CursorShape.Vsize,
+        Noesis.CursorType.SizeNWSE => Control.CursorShape.Fdiagsize,
+        Noesis.CursorType.SizeNESW => Control.CursorShape.Bdiagsize,
+        Noesis.CursorType.SizeAll => Control.CursorShape.Move,
+        Noesis.CursorType.Wait => Control.CursorShape.Wait,
+        Noesis.CursorType.AppStarting => Control.CursorShape.Busy,
+        Noesis.CursorType.Cross => Control.CursorShape.Cross,
+        Noesis.CursorType.Help => Control.CursorShape.Help,
+        Noesis.CursorType.No => Control.CursorShape.Forbidden,
+        _ => Control.CursorShape.Arrow,
+    };
+
+    /// <summary>Godot joypad button → Noesis gamepad key (drives keyboard-style navigation: focus movement, accept/cancel, paging).</summary>
+    public static Noesis.Key MapJoyButton(JoyButton button) => button switch
+    {
+        JoyButton.A => Noesis.Key.GamepadAccept,
+        JoyButton.B => Noesis.Key.GamepadCancel,
+        JoyButton.X => Noesis.Key.GamepadContext1,
+        JoyButton.Y => Noesis.Key.GamepadContext2,
+        JoyButton.DpadUp => Noesis.Key.GamepadUp,
+        JoyButton.DpadDown => Noesis.Key.GamepadDown,
+        JoyButton.DpadLeft => Noesis.Key.GamepadLeft,
+        JoyButton.DpadRight => Noesis.Key.GamepadRight,
+        JoyButton.LeftShoulder => Noesis.Key.GamepadPageLeft,
+        JoyButton.RightShoulder => Noesis.Key.GamepadPageRight,
+        JoyButton.Start => Noesis.Key.GamepadMenu,
+        JoyButton.Back => Noesis.Key.GamepadView,
+        _ => Noesis.Key.None,
+    };
 
     public static Noesis.Key MapKey(Key key) => key switch
     {
