@@ -62,7 +62,7 @@ The ViewModel is plain .NET. `INotifyPropertyChanged`, `ICommand`, zero engine t
 
 Godot `_Process` → Noesis `View.Update` → render on a private offscreen GL context (`RenderDeviceGL`) → readback → `ImageTexture` shown by the `NoesisView` control (premultiplied-alpha blend). Input events from `_GuiInput` are translated 1:1 (mouse, keyboard incl. text input, wheel, touch).
 
-The offscreen-context design works identically under **Forward+ (Vulkan)** and **Compatibility (GL)** and can never corrupt Godot's render state. The cost is a GPU→CPU copy per frame which is perfectly fine for menus/HUDs; zero-copy paths are the top roadmap item. Details and trade-offs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The offscreen-context design works identically under **Forward+ (Vulkan)** and **Compatibility (GL)** and can never corrupt Godot's render state. The cost is a GPU→CPU copy per frame which is perfectly fine for menus/HUDs; zero-copy paths are the top roadmap item.
 
 ## Roadmap
 
