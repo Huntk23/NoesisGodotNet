@@ -48,8 +48,10 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
     public Noesis.RenderDevice Device => _device;
     public bool OutputIsFlipped => true;
 
-    /// <summary>Inexpensive pre-check: a GL context current on this thread means Compatibility renderer with single-threaded rendering.</summary>
-    public static bool IsSupported() => wglGetCurrentContext() != IntPtr.Zero;
+    /// <summary>Inexpensive pre-check: a GL context current on this thread means Compatibility renderer with single-threaded rendering.
+    /// Windows-only (WGL); the OS guard also prevents a DllNotFoundException on other platforms.</summary>
+    public static bool IsSupported() =>
+        OperatingSystem.IsWindows() && wglGetCurrentContext() != IntPtr.Zero;
 
     public void Init(int width, int height)
     {

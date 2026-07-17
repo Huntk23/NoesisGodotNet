@@ -86,7 +86,17 @@ public sealed class NoesisViewHost : IDisposable
         View = Noesis.GUI.CreateView(Root);
         View.SetSize(_size.X, _size.Y);
 
-        _backend = CreateBackend();
+        try
+        {
+            _backend = CreateBackend();
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"[NoesisGUI] {_ownerName}: render backend init failed: {e.Message}");
+            View = null;
+            Root = null;
+            return false;
+        }
 
         // Renderer must be initialized with our GL context current.
         _backend.BeginContext();
@@ -104,9 +114,10 @@ public sealed class NoesisViewHost : IDisposable
         return true;
     }
 
-    /// <summary>Picks the fastest backend the current configuration supports.</summary>
+    /// <summary>Picks the fastest backend the current platform + configuration supports.</summary>
     private INoesisRenderBackend CreateBackend()
     {
+        // Zero-copy: Windows + Compatibility renderer (single-threaded GL) only, for now.
         bool wantZeroCopy = NoesisServer.GetSettingBool("noesis_gui/rendering/zero_copy", true);
         if (wantZeroCopy && SharedGLBackend.IsSupported())
         {
@@ -124,9 +135,22 @@ public sealed class NoesisViewHost : IDisposable
             }
         }
 
-        var offscreen = new OffscreenGLBackend();
-        offscreen.Init(_size.X, _size.Y);
-        return offscreen;
+        // Readback: per-platform offscreen context.
+        if (OperatingSystem.IsWindows())
+        {
+            var wgl = new OffscreenGLBackend();
+            wgl.Init(_size.X, _size.Y);
+            return wgl;
+        }
+        if (OperatingSystem.IsLinux())
+        {
+            var egl = new EglOffscreenBackend();
+            egl.Init(_size.X, _size.Y);
+            return egl;
+        }
+
+        throw new PlatformNotSupportedException(
+            "NoesisGodotNet currently supports Windows and Linux (macOS is on the roadmap).");
     }
 
     /// <summary>Ticks and renders one frame into Texture. Returns false if not initialized.</summary>
