@@ -56,6 +56,15 @@ The ViewModel is plain .NET. `INotifyPropertyChanged`, `ICommand`, zero engine t
 
 The official Noesis theme loads by default (embedded in the `Noesis.App.Theme` package), so every standard control - TextBox, Slider, ComboBox, ScrollViewer, ProgressBar has proper styles out of the box. `noesis_gui/theme/xaml` controls it: the default `Theme/NoesisTheme.DarkBlue.xaml`, another variant like `Theme/NoesisTheme.LightBlue.xaml`, a path to your own ResourceDictionary (relative to the resources root or `res://`), or empty to opt out (then untemplated controls render as Noesis's pink fallback). See `examples/ThemeShowcase/`.
 
+### World-space UI
+
+`NoesisView3D` puts XAML on a quad in 3D - in-world screens, holo-panels, terminals. Set `Xaml`, `PanelSize` (world units), and `PixelsPerMeter` (texture resolution). Mouse input is raycast from the camera and mapped into the view; the last-clicked panel owns keyboard focus. Hot-reload and ViewModels work exactly like the 2D `NoesisView` (both wrap the same `NoesisViewHost`). See `examples/WorldSpace/`.
+
+**Sizing world-space UI.** How large a panel appears is entirely a camera/placement decision - the node only controls physical size (`PanelSize`) and texture density (`PixelsPerMeter`). Two rules of thumb:
+
+- *Apparent size*: a panel fills the screen vertically when `PanelSize.y ≈ 2 × distance × tan(fov/2)`. The example uses a 0.9m-tall panel at 0.9m with a 60° FOV (~87% of screen height).
+- *Crispness vs. cost*: pick `PixelsPerMeter` so the texture roughly matches the panel's on-screen pixel size at typical viewing distance. Too low looks soft; too high wastes render + readback bandwidth every frame. The XAML's own layout matters too - a fixed-width column designed for fullscreen 2D will occupy only part of a wide panel (wrap content in a `Viewbox` if you want it to scale to fill instead).
+
 ### XAML hot-reload
 
 When running from the editor, the plugin watches `noesis_gui/resources/root` for `.xaml` changes. Save a file in Noesis Studio, Rider, anywhere, and the running game updates live: resource dictionaries and templates refresh via Noesis's reload mechanism, and any `NoesisView` whose root document changed is rebuilt in place with its ViewModel preserved. Invalid markup mid-edit is tolerated (the last good view stays up with a warning). Exported builds skip all of this.
@@ -79,7 +88,7 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 1. Zero-copy Compatibility path (share Godot's GL context, render into an FBO-backed Godot texture)
 2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
 3. Editor QoL: XAML preview in the editor, Noesis Studio "open in" button (hot-reload and `.xaml` import: done in 0.2)
-4. World-space UI helper (XAML on a quad in 3D)
+4. ~~World-space UI~~ (done in 0.5: `NoesisView3D`)
 5. Linux/macOS render backends (EGL/GLX/NSGL variants of the WGL pattern)
 6. C++ GDExtension core for GDScript users (same architecture, native)
 

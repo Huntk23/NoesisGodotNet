@@ -17,7 +17,7 @@ public static class NoesisHotReload
 {
     private static FileSystemWatcher _watcher;
     private static readonly ConcurrentQueue<string> Changed = new();
-    private static readonly List<NoesisView> Views = new();
+    private static readonly List<NoesisViewHost> Hosts = new();
     private static GodotXamlProvider _provider;
     private static string _rootGlobal;
     private static ulong _lastPumpFrame = ulong.MaxValue;
@@ -51,8 +51,8 @@ public static class NoesisHotReload
         GD.Print($"[NoesisGUI] XAML hot-reload watching '{_rootGlobal}'.");
     }
 
-    public static void Register(NoesisView view) => Views.Add(view);
-    public static void Unregister(NoesisView view) => Views.Remove(view);
+    public static void Register(NoesisViewHost host) => Hosts.Add(host);
+    public static void Unregister(NoesisViewHost host) => Hosts.Remove(host);
 
     /// <summary>Project Settings → NoesisGUI → Logging → Silence Hot Reload.</summary>
     internal static bool Silenced =>
@@ -122,11 +122,11 @@ public static class NoesisHotReload
             }
 
             // Views whose root document changed get rebuilt outright.
-            foreach (NoesisView view in Views)
+            foreach (NoesisViewHost host in Hosts)
             {
-                if (MatchesView(view, rel))
+                if (MatchesXaml(host.Xaml, rel))
                 {
-                    view.ReloadXaml();
+                    host.ReloadXaml();
                 }
             }
         }
@@ -142,9 +142,9 @@ public static class NoesisHotReload
         return p.Substring(_rootGlobal.Length).TrimStart('/');
     }
 
-    private static bool MatchesView(NoesisView view, string rel)
+    private static bool MatchesXaml(string xaml, string rel)
     {
-        string x = (view.Xaml ?? "").Replace('\\', '/').TrimStart('/');
+        string x = (xaml ?? "").Replace('\\', '/').TrimStart('/');
         if (x.StartsWith("res://"))
         {
             // Absolute res:// path: compare via the provider root.

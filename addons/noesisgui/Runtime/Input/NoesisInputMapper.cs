@@ -129,7 +129,7 @@ public static class NoesisInputMapper
         return (int)(120f * factor);
     }
 
-    private static Noesis.Key MapKey(Key key) => key switch
+    public static Noesis.Key MapKey(Key key) => key switch
     {
         Key.Escape => Noesis.Key.Escape,
         Key.Tab => Noesis.Key.Tab,

@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://examples/WorldSpace/WorldSpaceMain.cs" id="1_main"]
+[ext_resource type="Script" path="res://addons/noesisgui/Runtime/NoesisView3D.cs" id="2_view3d"]
+
+[node name="WorldSpace" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="Panel" type="StaticBody3D" parent="."]
+script = ExtResource("2_view3d")
+Xaml = "ThemeLab.xaml"
+PanelSize = Vector2(1.6, 0.9)
+PixelsPerMeter = 480
+
+[node name="Camera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.9)
+fov = 60.0
+current = true
