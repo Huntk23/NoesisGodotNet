@@ -30,7 +30,7 @@
               HorizontalAlignment="Center" Margin="0,24,0,0" Padding="24,8"/>
 
       <!-- filler so the ScrollViewer has something to scroll at small sizes -->
-      <TextBlock Text="⋯" HorizontalAlignment="Center" Opacity="0.4" Margin="0,32,0,0"/>
+      <TextBlock Text="…" HorizontalAlignment="Center" Opacity="0.4" Margin="0,32,0,0"/>
       <TextBlock Text="You scrolled. The wheel path works."
                  HorizontalAlignment="Center" Opacity="0.6" Margin="0,120,0,32"/>
     </StackPanel>

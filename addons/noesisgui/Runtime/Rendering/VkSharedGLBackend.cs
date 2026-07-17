@@ -58,8 +58,42 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
     public Noesis.RenderDevice Device => _device;
     public bool OutputIsFlipped => true;
 
-    public static bool IsSupported() =>
-        OperatingSystem.IsWindows() && RenderingServer.GetRenderingDevice() != null;
+    private static bool? _deviceSupportsExport;
+
+    public static bool IsSupported()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+        RenderingDevice rd = RenderingServer.GetRenderingDevice();
+        if (rd == null)
+        {
+            return false; // Compatibility renderer
+        }
+
+        // Probe the export extension BEFORE any GL/Noesis objects exist: a half-initialized attempt is wasted work and risks side effects
+        // on the fallback backend created right after. Cached per process.
+        if (_deviceSupportsExport == null)
+        {
+            try
+            {
+                IntPtr device = (IntPtr)(long)(ulong)rd.GetDriverResource(
+                    RenderingDevice.DriverResource.LogicalDevice, default, 0);
+                _deviceSupportsExport = VulkanInterop.SupportsWin32HandleExport(device);
+                if (_deviceSupportsExport == false)
+                {
+                    GD.Print("[NoesisGUI] Vulkan zero-copy unavailable: Godot's device lacks " +
+                             "VK_KHR_external_memory_win32; using readback under Forward+/Mobile.");
+                }
+            }
+            catch
+            {
+                _deviceSupportsExport = false;
+            }
+        }
+        return _deviceSupportsExport == true;
+    }
 
     public void Init(int width, int height)
     {

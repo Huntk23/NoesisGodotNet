@@ -28,6 +28,11 @@ internal static class VulkanInterop
         }
     }
 
+    /// <summary>True if the device can export memory as Win32 handles (VK_KHR_external_memory_win32 enabled at device creation).</summary>
+    public static bool SupportsWin32HandleExport(IntPtr device) =>
+        device != IntPtr.Zero &&
+        vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR") != IntPtr.Zero;
+
     /// <summary>Creates a 2D RGBA8 optimal-tiling image with exportable dedicated memory on the given device.
     /// Throws with a diagnostic on any failure.</summary>
     public static ExportedImage CreateExportedImage(IntPtr device, IntPtr physicalDevice, uint width, uint height)
