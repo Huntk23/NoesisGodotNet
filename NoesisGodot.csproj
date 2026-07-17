@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="examples\HelloNoesis\UI\MainMenu.xaml" />
     <Content Include="README.md" />
   </ItemGroup>
 </Project>

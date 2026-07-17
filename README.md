@@ -35,7 +35,7 @@ The addon is pure C# source; the Noesis runtime (managed + native) comes from th
    ```
 
 3. Build once, then enable **NoesisGodotNet** in **Project Settings → Plugins**.
-4. Set your license in **Project Settings → NoesisGUI** (`noesisgui/license/name`, `noesisgui/license/key`), or via `NOESIS_LICENSE_NAME` / `NOESIS_LICENSE_KEY` environment variables. Point `noesisgui/resources/root` at the folder holding your XAML.
+4. Set your license in **Project Settings → NoesisGUI** (`noesis_gui/license/name`, `noesis_gui/license/key`), or via `NOESIS_LICENSE_NAME` / `NOESIS_LICENSE_KEY` environment variables. Point `noesis_gui/resources/root` at the folder holding your XAML.
 5. Add a `NoesisView` node and set its `Xaml` property. Done.
 
 ## Running this repo
@@ -44,7 +44,7 @@ This repo is itself a Godot project with a working example: open in Godot 4.x .N
 
 ## Usage
 
-Add a `NoesisView` node (extends `TextureRect`), set its `Xaml` property (relative to `noesisgui/resources/root`, or an absolute `res://` path), and hand it a ViewModel:
+Add a `NoesisView` node (extends `TextureRect`), set its `Xaml` property (relative to `noesis_gui/resources/root`, or an absolute `res://` path), and hand it a ViewModel:
 
 ```csharp
 GetNode<NoesisView>("NoesisView").ViewModel = new MainMenuViewModel();
@@ -52,10 +52,15 @@ GetNode<NoesisView>("NoesisView").ViewModel = new MainMenuViewModel();
 
 The ViewModel is plain .NET. `INotifyPropertyChanged`, `ICommand`, zero engine types - so the same UI + logic previews in Noesis Studio and unit-tests outside Godot.
 
+### XAML hot-reload
+
+When running from the editor, the plugin watches `noesis_gui/resources/root` for `.xaml` changes. Save a file in Noesis Studio, Rider, anywhere, and the running game updates live: resource dictionaries and templates refresh via Noesis's reload mechanism, and any `NoesisView` whose root document changed is rebuilt in place with its ViewModel preserved. Invalid markup mid-edit is tolerated (the last good view stays up with a warning). Exported builds skip all of this.
+
 ### Asset conventions
 
-- XAML, fonts (`.ttf`/`.otf`), and XAML-referenced images live under `noesisgui/resources/root`.
-- Keep XAML-referenced images as **raw files**: Godot's importer converts png/jpg to `.ctex` and can omit originals from exports. Add `*.xaml`, the images, and fonts to your export preset's *non-resource include filter* (e.g. `*.xaml, *.ttf, UI/Images/*`).
+- XAML, fonts (`.ttf`/`.otf`), and XAML-referenced images live under `noesis_gui/resources/root`.
+- `.xaml` files are handled by the bundled import plugin: visible in the FileSystem dock and automatically included in exports (as `XamlFile` resources). No export filters are needed.
+- XAML-referenced **images and fonts** still need to ship raw: add them to your export preset's *non-resource include filter* (e.g. `*.ttf, UI/Images/*`), since Godot's importer would otherwise only export the converted `.ctex` versions.
 - Fonts: reference by family WPF-style - `FontFamily="./#Orbitron"`.
 
 ## How it works
@@ -68,7 +73,7 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 
 1. Zero-copy Compatibility path (share Godot's GL context, render into an FBO-backed Godot texture)
 2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
-3. Editor QoL: `.xaml` import plugin + inspector preview, XAML hot-reload, Noesis Studio "open in" button
+3. Editor QoL: XAML preview in the editor, Noesis Studio "open in" button (hot-reload and `.xaml` import: done in 0.2)
 4. World-space UI helper (XAML on a quad in 3D)
 5. Linux/macOS render backends (EGL/GLX/NSGL variants of the WGL pattern)
 6. C++ GDExtension core for GDScript users (same architecture, native)

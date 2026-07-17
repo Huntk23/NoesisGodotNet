@@ -18,7 +18,7 @@ namespace NoesisGodot;
 [GlobalClass]
 public partial class NoesisView : TextureRect
 {
-    /// <summary>XAML to load, relative to the provider root (see 'noesisgui/resources/root'), e.g. "MainMenu.xaml".
+    /// <summary>XAML to load, relative to the provider root (see 'noesis_gui/resources/root'), e.g. "MainMenu.xaml".
     /// Absolute res:// paths are also accepted.</summary>
     [Export] public string Xaml { get; set; } = "";
 
@@ -112,6 +112,7 @@ public partial class NoesisView : TextureRect
 
         _startTicksMs = Time.GetTicksMsec();
         Resized += OnResized;
+        NoesisHotReload.Register(this);
     }
 
     public override void _Process(double delta)
@@ -120,6 +121,9 @@ public partial class NoesisView : TextureRect
         {
             return;
         }
+
+        NoesisHotReload.Pump(); // no-op outside editor runs
+
         if (!AlwaysRender && !_redrawRequested)
         {
             return; // time is absolute (since _Ready), so animations stay coherent on resume
@@ -146,6 +150,63 @@ public partial class NoesisView : TextureRect
 
     /// <summary>Render one frame on the next _Process when AlwaysRender is off.</summary>
     public void RequestRedraw() => _redrawRequested = true;
+
+    /// <summary>Reloads the XAML document and rebuilds the view, preserving the ViewModel. Used by hot-reload;
+    /// also callable manually.</summary>
+    public void ReloadXaml()
+    {
+        if (_backend == null)
+        {
+            return;
+        }
+
+        Noesis.FrameworkElement newRoot;
+        try
+        {
+            newRoot = (Noesis.FrameworkElement)Noesis.GUI.LoadXaml(Xaml);
+        }
+        catch (Exception e)
+        {
+            // Common during hot-reload: half-written file or invalid markup. Keep showing the last good view.
+            if (!NoesisHotReload.Silenced)
+            {
+                GD.PushWarning($"[NoesisGUI] Reload of '{Xaml}' failed, keeping previous view: {e.Message}");
+            }
+            return;
+        }
+
+        _backend.BeginContext();
+        try
+        {
+            _view?.Renderer.Shutdown();
+        }
+        finally
+        {
+            _backend.EndContext();
+        }
+
+        _root = newRoot;
+        if (_pendingViewModel != null)
+        {
+            _root.DataContext = _pendingViewModel;
+        }
+
+        _view = Noesis.GUI.CreateView(_root);
+        var size = GetViewSize();
+        _view.SetSize(size.X, size.Y);
+
+        _backend.BeginContext();
+        try
+        {
+            _view.Renderer.Init(_backend.Device);
+        }
+        finally
+        {
+            _backend.EndContext();
+        }
+
+        _redrawRequested = true;
+    }
     
     #region Input
     public override void _GuiInput(InputEvent @event)
@@ -191,6 +252,7 @@ public partial class NoesisView : TextureRect
 
     public override void _ExitTree()
     {
+        NoesisHotReload.Unregister(this);
         if (_view != null && _backend != null)
         {
             _backend.BeginContext();

@@ -26,7 +26,7 @@ project/assembly_name="NoesisGodot"
 
 enabled=PackedStringArray("res://addons/noesisgui/plugin.cfg")
 
-[noesisgui]
+[noesis_gui]
 
 license/name=""
 license/key=""

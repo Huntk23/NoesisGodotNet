@@ -1,0 +1,14 @@
+[remap]
+
+importer="noesisgodot.xaml"
+type="Resource"
+uid="uid://uggvoemdn6x1"
+path="res://.godot/imported/MainMenu.xaml-b5253addd83f6008ec7e68b0cf5056fd.res"
+
+[deps]
+
+source_file="res://examples/HelloNoesis/UI/MainMenu.xaml"
+dest_files=["res://.godot/imported/MainMenu.xaml-b5253addd83f6008ec7e68b0cf5056fd.res"]
+
+[params]
+

@@ -11,6 +11,7 @@ public static class NoesisServer
 {
     private static readonly object Lock = new();
     private static bool _initialized;
+    private static GodotXamlProvider _xamlProvider;
 
     public static bool IsInitialized
     {
@@ -31,15 +32,15 @@ public static class NoesisServer
 
             // License -------------------------------------------------
             // Project Settings first, environment variables as fallback so keys can stay out of version control.
-            string licenseName = GetSetting("noesisgui/license/name",
+            string licenseName = GetSetting("noesis_gui/license/name",
                 System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_NAME") ?? "");
-            string licenseKey = GetSetting("noesisgui/license/key",
+            string licenseKey = GetSetting("noesis_gui/license/key",
                 System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_KEY") ?? "");
 
             if (string.IsNullOrEmpty(licenseName) || string.IsNullOrEmpty(licenseKey))
             {
-                GD.PushWarning("[NoesisGUI] No license configured. Set 'noesisgui/license/name' and " +
-                               "'noesisgui/license/key' in Project Settings, or the NOESIS_LICENSE_NAME / " +
+                GD.PushWarning("[NoesisGUI] No license configured. Set 'noesis_gui/license/name' and " +
+                               "'noesis_gui/license/key' in Project Settings, or the NOESIS_LICENSE_NAME / " +
                                "NOESIS_LICENSE_KEY environment variables. Noesis will run in evaluation mode " +
                                "or refuse to start depending on SDK build.");
             }
@@ -66,7 +67,8 @@ public static class NoesisServer
 
             // Resource providers ---------------------------------------
             // All XAML/image/font URIs resolve against res:// paths, so assets live inside the Godot project and ship in the PCK.
-            Noesis.GUI.SetXamlProvider(new GodotXamlProvider());
+            _xamlProvider = new GodotXamlProvider();
+            Noesis.GUI.SetXamlProvider(_xamlProvider);
             Noesis.GUI.SetTextureProvider(new GodotTextureProvider());
             Noesis.GUI.SetFontProvider(new GodotFontProvider());
 
@@ -82,6 +84,17 @@ public static class NoesisServer
             _initialized = true;
             GD.Print("[NoesisGUI] Initialized.");
         }
+
+        NoesisHotReload.Start(_xamlProvider);
+    }
+
+    internal static bool GetSettingBool(string name, bool fallback)
+    {
+        if (ProjectSettings.HasSetting(name))
+        {
+            return (bool)ProjectSettings.GetSetting(name);
+        }
+        return fallback;
     }
 
     internal static string GetSetting(string name, string fallback)

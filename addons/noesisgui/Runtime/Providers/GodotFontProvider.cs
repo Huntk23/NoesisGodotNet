@@ -4,7 +4,7 @@ using Godot;
 namespace NoesisGodot;
 
 /// <summary>
-/// Exposes .ttf/.otf files under 'noesisgui/resources/fonts' (and any folder referenced by XAML font URIs)
+/// Exposes .ttf/.otf files under 'noesis_gui/resources/fonts' (and any folder referenced by XAML font URIs)
 /// to Noesis text rendering.
 ///
 /// XAML usage: FontFamily="./#My Font Name"  (family name, not filename - same convention as WPF/Noesis).
@@ -53,10 +53,10 @@ public class GodotFontProvider : Noesis.FontProvider
         }
         if (string.IsNullOrEmpty(raw) || raw == ".")
         {
-            return NoesisServer.GetSetting("noesisgui/resources/fonts", "res://UI/Fonts");
+            return NoesisServer.GetSetting("noesis_gui/resources/fonts", "res://UI/Fonts");
         }
 
-        string root = NoesisServer.GetSetting("noesisgui/resources/root", "res://UI");
+        string root = NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI");
         return $"{root.TrimEnd('/')}/{raw}";
     }
 }
