@@ -13,9 +13,16 @@ public class GodotFontProvider : Noesis.FontProvider
     public GodotFontProvider()
     {
         // Register the official theme's embedded fonts (PT Root UI etc.) so themed text renders as designed. No-op if the package is absent.
+        int count = 0;
         foreach ((string folder, string filename) in NoesisThemeResources.EnumerateFonts())
         {
             RegisterFont(new System.Uri(folder, System.UriKind.RelativeOrAbsolute), filename);
+            GD.Print($"[NoesisGUI] Theme font registered: '{folder}/{filename}'");
+            count++;
+        }
+        if (count == 0)
+        {
+            GD.Print("[NoesisGUI] No embedded theme fonts found (Noesis.App.Theme absent?).");
         }
     }
 

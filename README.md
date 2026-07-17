@@ -93,18 +93,21 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 
 The plugin picks the fastest backend at startup, per view:
 
-- **Zero-copy (Compatibility/GL renderer)**: a second GL context shared with Godot's renders Noesis directly into a Godot-owned texture via FBO, no per-frame CPU copy. Requires single-threaded Compatibility rendering (the default). Disable with `noesis_gui/rendering/zero_copy` if needed.
-- **Readback (everything else)**: private GL context + `glReadPixels` + texture upload. Works under Forward+/Mobile (Vulkan) and threaded GL. Fine for menus/HUDs.
+- **Zero-copy, Compatibility/GL renderer** (Windows): a second GL context shared with Godot's renders Noesis directly into a Godot-owned texture via FBO, no per-frame CPU copy. Requires single-threaded Compatibility rendering (the default).
+- **Zero-copy, Forward+/Mobile (Vulkan)** (Windows): a VkImage with exportable memory is allocated on Godot's own Vulkan device, imported into a private GL context via `GL_EXT_memory_object_win32`, and handed back to Godot as a `Texture2DRD` — same GPU memory across both APIs. Requires driver support for the external-memory extensions.
+- **Readback (fallback / Linux)**: private GL/EGL context + `glReadPixels` + texture upload. Works everywhere. Fine for menus/HUDs.
+
+Both zero-copy paths are controlled by `noesis_gui/rendering/zero_copy` (default on) and fall back to readback automatically with a logged reason.
 
 The startup log prints which backend each view got.
 
-**Platforms**: Windows (WGL backends, zero-copy under Compatibility) and Linux (EGL readback backend, X11, and Wayland - Steam Deck included). macOS is on the roadmap (Godot's GL there runs through ANGLE/Metal, which needs different plumbing).
+**Platforms**: Windows (zero-copy under both renderers) and Linux (EGL readback backend, X11, and Wayland - Steam Deck included). macOS is on the roadmap (Godot's GL there runs through ANGLE/Metal, which needs different plumbing).
 
 ## Roadmap
 
 0. ~~Theme integration~~ (done in 0.4)
 1. ~~Zero-copy Compatibility path~~ (done in 0.7)
-2. Vulkan interop (external memory / D3D11 shared handles) to kill the readback on Forward+
+2. ~~Vulkan interop~~ (done in 0.9: external-memory zero-copy on Windows; Linux FD-handle variant pending)
 3. ~~Editor QoL: XAML preview in the editor~~ (hot-reload + import: 0.2; error overlay, cursor forwarding, gamepad, Studio button: 0.6)
 4. ~~World-space UI~~ (done in 0.5: `NoesisView3D`)
 5. ~~Linux render backend~~ (done in 0.8: EGL) / macOS backend (working on getting a test device; ANGLE/Metal path)

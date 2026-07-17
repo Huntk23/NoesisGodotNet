@@ -82,8 +82,12 @@ public static class NoesisServer
                 NoesisHotReload.FindByView(view)?.NotifyCursor(NoesisInputMapper.MapCursor(cursor));
             });
 
-            // Sensible text defaults (mirrors Noesis samples).
-            Noesis.GUI.SetFontFallbacks(["Arial", "Segoe UI Emoji"]);
+            // Sensible text defaults. Fallbacks must be fonts that actually exist per platform — Arial/Segoe don't exist on Linux (glyphs
+            // would render as missing-glyph tall rectangle boxes with X's).
+            string[] fontFallbacks = OperatingSystem.IsWindows()
+                ? ["Arial", "Segoe UI Emoji"]
+                : ["Noto Sans", "DejaVu Sans", "Liberation Sans", "Noto Color Emoji"];
+            Noesis.GUI.SetFontFallbacks(fontFallbacks);
             Noesis.GUI.SetFontDefaultProperties(15.0f,
                 Noesis.FontWeight.Normal, Noesis.FontStretch.Normal, Noesis.FontStyle.Normal);
 

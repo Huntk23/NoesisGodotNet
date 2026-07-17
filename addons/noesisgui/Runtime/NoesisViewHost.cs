@@ -117,8 +117,9 @@ public sealed class NoesisViewHost : IDisposable
     /// <summary>Picks the fastest backend the current platform + configuration supports.</summary>
     private INoesisRenderBackend CreateBackend()
     {
-        // Zero-copy: Windows + Compatibility renderer (single-threaded GL) only, for now.
         bool wantZeroCopy = NoesisServer.GetSettingBool("noesis_gui/rendering/zero_copy", true);
+
+        // Zero-copy under Compatibility (GL): shared context (Windows).
         if (wantZeroCopy && SharedGLBackend.IsSupported())
         {
             var shared = new SharedGLBackend();
@@ -131,6 +132,23 @@ public sealed class NoesisViewHost : IDisposable
             {
                 shared.Dispose();
                 GD.PushWarning($"[NoesisGUI] {_ownerName}: zero-copy GL init failed, " +
+                               $"falling back to readback: {e.Message}");
+            }
+        }
+
+        // Zero-copy under Forward+/Mobile (Vulkan): external-memory interop (Windows).
+        if (wantZeroCopy && VkSharedGLBackend.IsSupported())
+        {
+            var vk = new VkSharedGLBackend();
+            try
+            {
+                vk.Init(_size.X, _size.Y);
+                return vk;
+            }
+            catch (Exception e)
+            {
+                vk.Dispose();
+                GD.PushWarning($"[NoesisGUI] {_ownerName}: Vulkan-interop init failed, " +
                                $"falling back to readback: {e.Message}");
             }
         }
