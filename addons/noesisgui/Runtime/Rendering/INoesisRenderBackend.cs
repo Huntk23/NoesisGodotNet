@@ -3,9 +3,12 @@ using System;
 namespace NoesisGodot;
 
 /// <summary>
-/// A rendering strategy for a Noesis view. Two implementations:
-///  - OffscreenGLBackend: private GL context + CPU readback (works everywhere)
-///  - SharedGLBackend: GL context shared with Godot's, renders directly into a Godot-owned texture (zero-copy; Compatibility renderer only)
+/// A rendering strategy for a Noesis view. Implementations, in selection order:
+///  - SharedGLBackend: zero-copy via GL context sharing (Windows, Compatibility renderer)
+///  - VkSharedGLBackend: zero-copy via Vulkan external memory (Windows, Forward+/Mobile;
+///    requires VK_KHR_external_memory_win32 on Godot's device — engine-gated today)
+///  - OffscreenGLBackend: private WGL context + CPU readback (Windows fallback)
+///  - EglOffscreenBackend: headless EGL pbuffer + CPU readback (Linux, all renderers)
 /// </summary>
 internal interface INoesisRenderBackend : IDisposable
 {

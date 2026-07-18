@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package addon
+        run: |
+          mkdir -p dist
+          cd addons
+          zip -r "../dist/noesisgui-addon-${GITHUB_REF_NAME}.zip" noesisgui
+          cd ..
+          cp README.md CHANGELOG.md LICENSE dist/
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/noesisgui-addon-*.zip
+          generate_release_notes: true
+          body: |
+            Install: unzip into your Godot .NET project so the folder lands at
+            `addons/noesisgui/`, add the `Noesis.GUI` + `Noesis.App.Theme`
+            NuGet packages and `<UseRidGraph>true</UseRidGraph>` to your
+            .csproj, build, enable the plugin. Full instructions in the README.

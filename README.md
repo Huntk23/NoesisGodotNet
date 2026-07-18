@@ -94,7 +94,7 @@ The offscreen-context design works identically under **Forward+ (Vulkan)** and *
 The plugin picks the fastest backend at startup, per view:
 
 - **Zero-copy, Compatibility/GL renderer** (Windows): a second GL context shared with Godot's renders Noesis directly into a Godot-owned texture via FBO, no per-frame CPU copy. Requires single-threaded Compatibility rendering (the default).
-- **Zero-copy, Forward+/Mobile (Vulkan)** (Windows): a VkImage with exportable memory is allocated on Godot's own Vulkan device, imported into a private GL context via `GL_EXT_memory_object_win32`, and handed back to Godot as a `Texture2DRD` — same GPU memory across both APIs. Requires driver support for the external-memory extensions.
+- **Zero-copy, Forward+/Mobile (Vulkan)** (Windows): a VkImage with exportable memory is allocated on Godot's own Vulkan device, imported into a private GL context via `GL_EXT_memory_object_win32`, and handed back to Godot as a `Texture2DRD` - same GPU memory across both APIs. **Currently inactive on stock Godot**: the engine doesn't enable `VK_KHR_external_memory_win32` at device creation. Proposal filed over on godot-proposals; the plugin detects this and uses readback.
 - **Readback (fallback / Linux)**: private GL/EGL context + `glReadPixels` + texture upload. Works everywhere. Fine for menus/HUDs.
 
 Both zero-copy paths are controlled by `noesis_gui/rendering/zero_copy` (default on) and fall back to readback automatically with a logged reason.
