@@ -14,10 +14,10 @@ namespace NoesisGodot;
 /// </summary>
 internal sealed class EglOffscreenBackend : INoesisRenderBackend
 {
-    private IntPtr _display = IntPtr.Zero;   // EGLDisplay (default display, never terminated)
+    private IntPtr _display = IntPtr.Zero; // EGLDisplay (default display, never terminated)
     private IntPtr _config = IntPtr.Zero;
     private IntPtr _context = IntPtr.Zero;
-    private IntPtr _surface = IntPtr.Zero;   // pbuffer
+    private IntPtr _surface = IntPtr.Zero; // pbuffer
 
     // Saved caller context (either API)
     private IntPtr _savedEglDisplay, _savedEglDraw, _savedEglRead, _savedEglCtx;
@@ -27,14 +27,14 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
     private int _width;
     private int _height;
     private byte[] _readback;
-    private byte[] _flipped;
     private Image _image;
     private ImageTexture _texture;
 
     private BindFramebufferProc _glBindFramebuffer;
 
     public Noesis.RenderDevice Device => _device;
-    public bool OutputIsFlipped => false; // rows flipped on CPU during readback
+
+    public bool OutputIsFlipped => true; // preserve GL's bottom-up rows; the displaying node flips sampling
 
     public void Init(int width, int height)
     {
@@ -46,10 +46,12 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException("eglGetDisplay failed.");
         }
+
         if (!eglInitialize(_display, out _, out _))
         {
             throw new InvalidOperationException($"eglInitialize failed (0x{eglGetError():X}).");
         }
+
         if (!eglBindAPI(EGL_OPENGL_API))
         {
             throw new InvalidOperationException("eglBindAPI(EGL_OPENGL_API) failed — desktop GL unavailable.");
@@ -71,6 +73,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException("eglChooseConfig found no RGBA8+stencil pbuffer config.");
         }
+
         _config = configs[0];
 
         _context = eglCreateContext(_display, _config, IntPtr.Zero /* EGL_NO_CONTEXT */, null);
@@ -89,6 +92,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
             {
                 throw new InvalidOperationException("Missing GL entry point 'glBindFramebuffer'.");
             }
+
             _glBindFramebuffer = Marshal.GetDelegateForFunctionPointer<BindFramebufferProc>(proc);
 
             _device = new Noesis.RenderDeviceGL();
@@ -135,13 +139,8 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
             EndContext();
         }
 
-        // GL rows are bottom-up; Godot images are top-down.
-        int stride = _width * 4;
-        for (int y = 0; y < _height; y++)
-        {
-            Buffer.BlockCopy(_readback, (_height - 1 - y) * stride, _flipped, y * stride, stride);
-        }
-        _image.SetData(_width, _height, false, Image.Format.Rgba8, _flipped);
+        // Keep GL's bottom-up row order. NoesisView/NoesisView3D flip texture sampling without another full-frame CPU copy.
+        _image.SetData(_width, _height, false, Image.Format.Rgba8, _readback);
 
         if (_texture == null || _texture.GetSize() != _image.GetSize())
         {
@@ -151,6 +150,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
         {
             _texture.Update(_image);
         }
+
         return _texture;
     }
 
@@ -162,6 +162,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
         {
             return;
         }
+
         _width = width;
         _height = height;
 
@@ -188,8 +189,12 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
                 _savedGlxDrawable = glXGetCurrentDrawable();
             }
         }
-        catch (DllNotFoundException) { } // pure-Wayland system without GLX
-        catch (EntryPointNotFoundException) { }
+        catch (DllNotFoundException)
+        {
+        } // pure-Wayland system without GLX
+        catch (EntryPointNotFoundException)
+        {
+        }
 
         if (!eglMakeCurrent(_display, _surface, _surface, _context))
         {
@@ -212,8 +217,12 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
             {
                 glXMakeCurrent(_savedGlxDisplay, _savedGlxDrawable, _savedGlxCtx);
             }
-            catch (DllNotFoundException) { }
-            catch (EntryPointNotFoundException) { }
+            catch (DllNotFoundException)
+            {
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
         }
     }
 
@@ -225,6 +234,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
             eglDestroyContext(_display, _context);
             _context = IntPtr.Zero;
         }
+
         // Deliberately NO eglTerminate: the display may be shared with Godot's own EGL use (Wayland); terminating it would take Godot down with us.
         _device = null;
         _texture = null;
@@ -252,8 +262,7 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
     private void AllocateBuffers()
     {
         _readback = new byte[_width * _height * 4];
-        _flipped = new byte[_width * _height * 4];
-        _image = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, _flipped);
+        _image = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, _readback);
     }
 
     private delegate void BindFramebufferProc(uint target, uint framebuffer);
@@ -285,32 +294,81 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
     private const string EglLib = "libEGL.so.1";
     private const string GlLib = "libGL.so.1"; // glvnd: core GL + GLX entry points
 
-    [DllImport(EglLib)] private static extern IntPtr eglGetDisplay(IntPtr nativeDisplay);
-    [DllImport(EglLib)] private static extern bool eglInitialize(IntPtr display, out int major, out int minor);
-    [DllImport(EglLib)] private static extern bool eglBindAPI(uint api);
-    [DllImport(EglLib)] private static extern bool eglChooseConfig(IntPtr display, int[] attribs, IntPtr[] configs, int configSize, out int numConfig);
-    [DllImport(EglLib)] private static extern IntPtr eglCreateContext(IntPtr display, IntPtr config, IntPtr shareContext, int[] attribs);
-    [DllImport(EglLib)] private static extern bool eglDestroyContext(IntPtr display, IntPtr context);
-    [DllImport(EglLib)] private static extern IntPtr eglCreatePbufferSurface(IntPtr display, IntPtr config, int[] attribs);
-    [DllImport(EglLib)] private static extern bool eglDestroySurface(IntPtr display, IntPtr surface);
-    [DllImport(EglLib)] private static extern bool eglMakeCurrent(IntPtr display, IntPtr draw, IntPtr read, IntPtr context);
-    [DllImport(EglLib)] private static extern IntPtr eglGetCurrentContext();
-    [DllImport(EglLib)] private static extern IntPtr eglGetCurrentDisplay();
-    [DllImport(EglLib)] private static extern IntPtr eglGetCurrentSurface(int readDraw);
-    [DllImport(EglLib)] private static extern IntPtr eglGetProcAddress(string name);
-    [DllImport(EglLib)] private static extern int eglGetError();
+    [DllImport(EglLib)]
+    private static extern IntPtr eglGetDisplay(IntPtr nativeDisplay);
 
-    [DllImport(GlLib)] private static extern IntPtr glXGetCurrentContext();
-    [DllImport(GlLib)] private static extern IntPtr glXGetCurrentDisplay();
-    [DllImport(GlLib)] private static extern IntPtr glXGetCurrentDrawable();
-    [DllImport(GlLib)] private static extern bool glXMakeCurrent(IntPtr display, IntPtr drawable, IntPtr context);
+    [DllImport(EglLib)]
+    private static extern bool eglInitialize(IntPtr display, out int major, out int minor);
 
-    [DllImport(GlLib)] private static extern void glViewport(int x, int y, int w, int h);
-    [DllImport(GlLib)] private static extern void glDisable(uint cap);
-    [DllImport(GlLib)] private static extern void glColorMask(bool r, bool g, bool b, bool a);
-    [DllImport(GlLib)] private static extern void glClearColor(float r, float g, float b, float a);
-    [DllImport(GlLib)] private static extern void glClearStencil(int s);
-    [DllImport(GlLib)] private static extern void glClear(uint mask);
-    [DllImport(GlLib)] private static extern void glPixelStorei(uint pname, int param);
-    [DllImport(GlLib)] private static extern void glReadPixels(int x, int y, int w, int h, uint format, uint type, byte[] pixels);
+    [DllImport(EglLib)]
+    private static extern bool eglBindAPI(uint api);
+
+    [DllImport(EglLib)]
+    private static extern bool eglChooseConfig(IntPtr display, int[] attribs, IntPtr[] configs, int configSize, out int numConfig);
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglCreateContext(IntPtr display, IntPtr config, IntPtr shareContext, int[] attribs);
+
+    [DllImport(EglLib)]
+    private static extern bool eglDestroyContext(IntPtr display, IntPtr context);
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglCreatePbufferSurface(IntPtr display, IntPtr config, int[] attribs);
+
+    [DllImport(EglLib)]
+    private static extern bool eglDestroySurface(IntPtr display, IntPtr surface);
+
+    [DllImport(EglLib)]
+    private static extern bool eglMakeCurrent(IntPtr display, IntPtr draw, IntPtr read, IntPtr context);
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglGetCurrentContext();
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglGetCurrentDisplay();
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglGetCurrentSurface(int readDraw);
+
+    [DllImport(EglLib)]
+    private static extern IntPtr eglGetProcAddress(string name);
+
+    [DllImport(EglLib)]
+    private static extern int eglGetError();
+
+    [DllImport(GlLib)]
+    private static extern IntPtr glXGetCurrentContext();
+
+    [DllImport(GlLib)]
+    private static extern IntPtr glXGetCurrentDisplay();
+
+    [DllImport(GlLib)]
+    private static extern IntPtr glXGetCurrentDrawable();
+
+    [DllImport(GlLib)]
+    private static extern bool glXMakeCurrent(IntPtr display, IntPtr drawable, IntPtr context);
+
+    [DllImport(GlLib)]
+    private static extern void glViewport(int x, int y, int w, int h);
+
+    [DllImport(GlLib)]
+    private static extern void glDisable(uint cap);
+
+    [DllImport(GlLib)]
+    private static extern void glColorMask(bool r, bool g, bool b, bool a);
+
+    [DllImport(GlLib)]
+    private static extern void glClearColor(float r, float g, float b, float a);
+
+    [DllImport(GlLib)]
+    private static extern void glClearStencil(int s);
+
+    [DllImport(GlLib)]
+    private static extern void glClear(uint mask);
+
+    [DllImport(GlLib)]
+    private static extern void glPixelStorei(uint pname, int param);
+
+    [DllImport(GlLib)]
+    private static extern void glReadPixels(int x, int y, int w, int h, uint format, uint type, byte[] pixels);
 }

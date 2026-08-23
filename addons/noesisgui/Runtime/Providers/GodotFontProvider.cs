@@ -65,24 +65,19 @@ public class GodotFontProvider : Noesis.FontProvider
         }
 
         string resFolder = ResolveFolder(folder);
-        return GodotResourceUtil.OpenRead($"{resFolder.TrimEnd('/')}/{filename}", "Font");
+        return GodotResourceUtil.OpenRead(GodotResourceUtil.JoinPath(resFolder, filename), "Font");
     }
 
     private static string ResolveFolder(System.Uri folder)
     {
-        string raw = folder == null ? "" : folder.IsAbsoluteUri ? folder.AbsolutePath : folder.OriginalString;
-        raw = raw.Replace('\\', '/').Trim('/');
+        string raw = folder == null ? "" : GodotResourceUtil.GetRawPath(folder);
 
-        if (raw.StartsWith("res://"))
+        if (string.IsNullOrEmpty(raw) || raw is "." or "./")
         {
-            return raw;
-        }
-        if (string.IsNullOrEmpty(raw) || raw == ".")
-        {
-            return NoesisServer.GetSetting("noesis_gui/resources/fonts", "res://UI/Fonts");
+            return GodotResourceUtil.ToResPath(
+                NoesisServer.GetSetting("noesis_gui/resources/fonts", "res://UI/Fonts"));
         }
 
-        string root = NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI");
-        return $"{root.TrimEnd('/')}/{raw}";
+        return GodotResourceUtil.ToResPath(raw);
     }
 }

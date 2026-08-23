@@ -16,10 +16,12 @@ public partial class NoesisView : TextureRect
 {
     /// <summary>XAML to load, relative to the provider root (see 'noesis_gui/resources/root'), e.g. "MainMenu.xaml".
     /// Absolute res:// paths are also accepted.</summary>
-    [Export] public string Xaml { get; set; } = "";
+    [Export]
+    public string Xaml { get; set; } = "";
 
     /// <summary>Continuous redraw. Disable to render only when RequestRedraw() is called.</summary>
-    [Export] public bool AlwaysRender { get; set; } = true;
+    [Export]
+    public bool AlwaysRender { get; set; } = true;
 
     private readonly NoesisViewHost _host = new();
     private bool _redrawRequested = true;
@@ -52,12 +54,12 @@ public partial class NoesisView : TextureRect
         FocusMode = FocusModeEnum.All;
         MouseFilter = MouseFilterEnum.Stop;
 
-        if (!_host.Init(Xaml, (Vector2I)Size, Name))
+        if (!_host.Init(Xaml, (Vector2I) Size, Name))
         {
             return;
         }
 
-        // Zero-copy backend renders GPU-side (bottom-up); readback is upright.
+        // GL-backed outputs use bottom-up row order; flip while sampling instead of copying rows on the CPU.
         FlipV = _host.OutputIsFlipped;
 
         Resized += OnResized;
@@ -99,6 +101,7 @@ public partial class NoesisView : TextureRect
             _errorOverlay.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
             _errorOverlay.GrowVertical = GrowDirection.Begin;
         }
+
         _errorOverlay.Text = $"XAML error in '{Xaml}' (showing last good view):\n{message}";
         _errorOverlay.Visible = true;
     }
@@ -124,6 +127,7 @@ public partial class NoesisView : TextureRect
         {
             return; // time is absolute (since _Ready), so animations stay coherent on resume
         }
+
         _redrawRequested = false;
 
         if (_host.RenderFrame())
@@ -143,6 +147,7 @@ public partial class NoesisView : TextureRect
         {
             _host.Activate();
         }
+
         _redrawRequested = true;
     }
 
@@ -196,7 +201,7 @@ public partial class NoesisView : TextureRect
 
     private void OnResized()
     {
-        _host.Resize((Vector2I)Size);
+        _host.Resize((Vector2I) Size);
         _redrawRequested = true;
     }
 
