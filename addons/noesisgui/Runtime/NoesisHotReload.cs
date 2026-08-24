@@ -30,7 +30,7 @@ public static class NoesisHotReload
 
         _provider = provider;
         string rootRes = NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI");
-        _rootGlobal = ProjectSettings.GlobalizePath(rootRes).Replace('\\', '/');
+        _rootGlobal = Path.GetFullPath(ProjectSettings.GlobalizePath(rootRes));
 
         if (!Directory.Exists(_rootGlobal))
         {
@@ -64,6 +64,7 @@ public static class NoesisHotReload
                 return host;
             }
         }
+
         return null;
     }
 
@@ -84,10 +85,11 @@ public static class NoesisHotReload
         {
             return;
         }
+
         _lastPumpFrame = frame;
 
         // Editors fire several events per save — dedupe this frame's batch.
-        var batch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var batch = new HashSet<string>(StringComparer.Ordinal);
         while (Changed.TryDequeue(out string path))
         {
             string rel = ToRelative(path);
@@ -128,6 +130,7 @@ public static class NoesisHotReload
                 {
                     GD.PushWarning($"[NoesisGUI] '{rel}' has invalid XAML, keeping previous view: {parseError}");
                 }
+
                 foreach (NoesisViewHost host in Hosts)
                 {
                     if (MatchesXaml(host.Xaml, rel))
@@ -135,6 +138,7 @@ public static class NoesisHotReload
                         host.NotifyReloadFailed(parseError);
                     }
                 }
+
                 continue;
             }
 
@@ -170,23 +174,25 @@ public static class NoesisHotReload
 
     private static string ToRelative(string fullPath)
     {
-        string p = fullPath.Replace('\\', '/');
-        if (!p.StartsWith(_rootGlobal, StringComparison.OrdinalIgnoreCase))
+        string rel = Path.GetRelativePath(_rootGlobal, Path.GetFullPath(fullPath)).Replace('\\', '/');
+        if (Path.IsPathRooted(rel) || rel == ".." || rel.StartsWith("../", StringComparison.Ordinal))
         {
             return null;
         }
-        return p.Substring(_rootGlobal.Length).TrimStart('/');
+
+        return rel == "." ? "" : rel;
     }
 
     private static bool MatchesXaml(string xaml, string rel)
     {
-        string x = (xaml ?? "").Replace('\\', '/').TrimStart('/');
-        if (x.StartsWith("res://"))
+        string x = GodotResourceUtil.NormalizePath(xaml);
+        if (GodotResourceUtil.IsResPath(x))
         {
             // Absolute res:// path: compare via the provider root.
             string abs = GodotResourceUtil.ToResPath(rel);
-            return string.Equals(x, abs, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(x, abs, StringComparison.Ordinal);
         }
-        return string.Equals(x, rel, StringComparison.OrdinalIgnoreCase);
+
+        return string.Equals(x, rel, StringComparison.Ordinal);
     }
 }

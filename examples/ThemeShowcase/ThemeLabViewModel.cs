@@ -11,29 +11,41 @@ public class ThemeLabViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler PropertyChanged;
 
     private string _playerName = "";
+
     public string PlayerName
     {
         get => _playerName;
-        set { if (Set(ref _playerName, value)) Notify(nameof(Greeting)); }
+        set
+        {
+            if (Set(ref _playerName, value)) Notify(nameof(Greeting));
+        }
     }
 
     public string Greeting =>
         string.IsNullOrWhiteSpace(PlayerName) ? "Hello, stranger." : $"Hello, {PlayerName}!";
 
     private bool _awesomeMode;
+
     public bool AwesomeMode
     {
         get => _awesomeMode;
-        set { if (Set(ref _awesomeMode, value)) Notify(nameof(AwesomeStatus)); }
+        set
+        {
+            if (Set(ref _awesomeMode, value)) Notify(nameof(AwesomeStatus));
+        }
     }
 
     public string AwesomeStatus => AwesomeMode ? "Awesome mode: ENGAGED" : "Awesome mode: off";
 
     private double _volume = 60;
+
     public double Volume
     {
         get => _volume;
-        set { if (Set(ref _volume, value)) Notify(nameof(VolumeLabel)); }
+        set
+        {
+            if (Set(ref _volume, value)) Notify(nameof(VolumeLabel));
+        }
     }
 
     public string VolumeLabel => $"Volume: {Volume:0}%";
@@ -41,6 +53,7 @@ public class ThemeLabViewModel : INotifyPropertyChanged
     public List<string> QualityOptions { get; } = ["Low", "Medium", "High", "Ultra"];
 
     private string _quality = "High";
+
     public string Quality
     {
         get => _quality;
@@ -66,6 +79,7 @@ public class ThemeLabViewModel : INotifyPropertyChanged
         {
             return false;
         }
+
         field = value;
         Notify(name);
         return true;

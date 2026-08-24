@@ -56,6 +56,7 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
     private TexStorageMem2DProc _glTexStorageMem2DEXT;
 
     public Noesis.RenderDevice Device => _device;
+
     public bool OutputIsFlipped => true;
 
     private static bool? _deviceSupportsExport;
@@ -66,6 +67,7 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             return false;
         }
+
         RenderingDevice rd = RenderingServer.GetRenderingDevice();
         if (rd == null)
         {
@@ -78,13 +80,11 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             try
             {
-                IntPtr device = (IntPtr)(long)(ulong)rd.GetDriverResource(
-                    RenderingDevice.DriverResource.LogicalDevice, default, 0);
+                IntPtr device = (IntPtr) (long) (ulong) rd.GetDriverResource(RenderingDevice.DriverResource.LogicalDevice, default, 0);
                 _deviceSupportsExport = VulkanInterop.SupportsWin32HandleExport(device);
                 if (_deviceSupportsExport == false)
                 {
-                    GD.Print("[NoesisGUI] Vulkan zero-copy unavailable: Godot's device lacks " +
-                             "VK_KHR_external_memory_win32; using readback under Forward+/Mobile.");
+                    GD.Print("[NoesisGUI] Vulkan zero-copy unavailable: Godot's device lacks " + "VK_KHR_external_memory_win32; using readback under Forward+/Mobile.");
                 }
             }
             catch
@@ -92,6 +92,7 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
                 _deviceSupportsExport = false;
             }
         }
+
         return _deviceSupportsExport == true;
     }
 
@@ -108,10 +109,8 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
 
         // If these enum members don't exist in your Godot version, the older
         // names are DriverResource.VulkanDevice / VulkanPhysicalDevice.
-        _vkDevice = (IntPtr)(long)_rd.GetDriverResource(
-            RenderingDevice.DriverResource.LogicalDevice, default, 0);
-        _vkPhysicalDevice = (IntPtr)(long)_rd.GetDriverResource(
-            RenderingDevice.DriverResource.PhysicalDevice, default, 0);
+        _vkDevice = (IntPtr) (long) _rd.GetDriverResource(RenderingDevice.DriverResource.LogicalDevice, default, 0);
+        _vkPhysicalDevice = (IntPtr) (long) _rd.GetDriverResource(RenderingDevice.DriverResource.PhysicalDevice, default, 0);
         if (_vkDevice == IntPtr.Zero || _vkPhysicalDevice == IntPtr.Zero)
         {
             throw new InvalidOperationException("Could not obtain Vulkan device handles from Godot.");
@@ -179,6 +178,7 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             return;
         }
+
         _width = width;
         _height = height;
 
@@ -224,19 +224,23 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
             {
                 EndContext();
             }
+
             wglDeleteContext(_hglrc);
             _hglrc = IntPtr.Zero;
         }
+
         if (_hdc != IntPtr.Zero)
         {
             ReleaseDC(_hwnd, _hdc);
             _hdc = IntPtr.Zero;
         }
+
         if (_hwnd != IntPtr.Zero)
         {
             DestroyWindow(_hwnd);
             _hwnd = IntPtr.Zero;
         }
+
         _device = null;
         _rd = null;
     }
@@ -244,19 +248,18 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
     private void CreateTarget()
     {
         // 1. Vulkan image with exportable memory, on Godot's device.
-        _exported = VulkanInterop.CreateExportedImage(_vkDevice, _vkPhysicalDevice, (uint)_width, (uint)_height);
+        _exported = VulkanInterop.CreateExportedImage(_vkDevice, _vkPhysicalDevice, (uint) _width, (uint) _height);
 
         // 2. Import into GL as a texture backed by the same memory.
         uint[] ids = new uint[1];
         _glCreateMemoryObjectsEXT(1, ids);
         _glMemoryObject = ids[0];
-        _glImportMemoryWin32HandleEXT(_glMemoryObject, _exported.AllocationSize,
-            GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, _exported.Win32Handle);
+        _glImportMemoryWin32HandleEXT(_glMemoryObject, _exported.AllocationSize, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, _exported.Win32Handle);
 
         glGenTextures(1, ids);
         _glTexture = ids[0];
         glBindTexture(GL_TEXTURE_2D, _glTexture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, (int)GL_OPTIMAL_TILING_EXT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_TILING_EXT, (int) GL_OPTIMAL_TILING_EXT);
         _glTexStorageMem2DEXT(GL_TEXTURE_2D, 1, GL_RGBA8, _width, _height, _glMemoryObject, 0);
 
         // 3. FBO with the imported texture + stencil for Noesis.
@@ -276,15 +279,12 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException($"Interop FBO incomplete (0x{status:X}).");
         }
+
         _glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // 4. Hand the VkImage to Godot as a sampleable texture.
-        _godotTextureRid = _rd.TextureCreateFromExtension(
-            RenderingDevice.TextureType.Type2D,
-            RenderingDevice.DataFormat.R8G8B8A8Unorm,
-            RenderingDevice.TextureSamples.Samples1,
-            RenderingDevice.TextureUsageBits.SamplingBit | RenderingDevice.TextureUsageBits.CanCopyFromBit,
-            _exported.Image, (ulong)_width, (ulong)_height, 1, 1);
+        _godotTextureRid = _rd.TextureCreateFromExtension(RenderingDevice.TextureType.Type2D, RenderingDevice.DataFormat.R8G8B8A8Unorm, RenderingDevice.TextureSamples.Samples1,
+            RenderingDevice.TextureUsageBits.SamplingBit | RenderingDevice.TextureUsageBits.CanCopyFromBit, _exported.Image, (ulong) _width, (ulong) _height, 1, 1);
         _texture = new Texture2Drd { TextureRdRid = _godotTextureRid };
     }
 
@@ -295,6 +295,7 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
             _rd.FreeRid(_godotTextureRid);
             _godotTextureRid = default;
         }
+
         _texture = null;
 
         if (_fbo != 0)
@@ -302,16 +303,19 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
             _glDeleteFramebuffers(1, [_fbo]);
             _fbo = 0;
         }
+
         if (_stencilRbo != 0)
         {
             _glDeleteRenderbuffers(1, [_stencilRbo]);
             _stencilRbo = 0;
         }
+
         if (_glTexture != 0)
         {
             glDeleteTextures(1, [_glTexture]);
             _glTexture = 0;
         }
+
         if (_glMemoryObject != 0)
         {
             _glDeleteMemoryObjectsEXT(1, [_glMemoryObject]);
@@ -324,17 +328,18 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
 
     private void CreateGLContext()
     {
-        _hwnd = CreateWindowExW(0, "STATIC", "NoesisVkInterop", WS_POPUP,
-            0, 0, 4, 4, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        _hwnd = CreateWindowExW(0, "STATIC", "NoesisVkInterop", WS_POPUP, 0, 0, 4, 4, IntPtr.Zero,
+            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         if (_hwnd == IntPtr.Zero)
         {
             throw new InvalidOperationException("CreateWindowExW failed.");
         }
+
         _hdc = GetDC(_hwnd);
 
         var pfd = new PIXELFORMATDESCRIPTOR
         {
-            nSize = (ushort)Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
+            nSize = (ushort) Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
             nVersion = 1,
             dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
             iPixelType = PFD_TYPE_RGBA,
@@ -381,22 +386,36 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException($"Missing GL entry point '{name}' (driver lacks the extension).");
         }
+
         return Marshal.GetDelegateForFunctionPointer<T>(addr);
     }
-    
+
     private delegate void GenFramebuffersProc(int n, uint[] ids);
+
     private delegate void DeleteFramebuffersProc(int n, uint[] ids);
+
     private delegate void BindFramebufferProc(uint target, uint framebuffer);
+
     private delegate void FramebufferTexture2DProc(uint target, uint attachment, uint textarget, uint texture, int level);
+
     private delegate void GenRenderbuffersProc(int n, uint[] ids);
+
     private delegate void DeleteRenderbuffersProc(int n, uint[] ids);
+
     private delegate void BindRenderbufferProc(uint target, uint renderbuffer);
+
     private delegate void RenderbufferStorageProc(uint target, uint internalformat, int width, int height);
+
     private delegate void FramebufferRenderbufferProc(uint target, uint attachment, uint renderbuffertarget, uint renderbuffer);
+
     private delegate uint CheckFramebufferStatusProc(uint target);
+
     private delegate void CreateMemoryObjectsProc(int n, uint[] memoryObjects);
+
     private delegate void DeleteMemoryObjectsProc(int n, uint[] memoryObjects);
+
     private delegate void ImportMemoryWin32HandleProc(uint memory, ulong size, uint handleType, IntPtr handle);
+
     private delegate void TexStorageMem2DProc(uint target, int levels, uint internalFormat, int width, int height, uint memory, ulong offset);
 
     private const uint WS_POPUP = 0x80000000;
@@ -440,31 +459,72 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName,
-        uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
+    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName, uint style, int x, int y, int w, int h, IntPtr parent,
+        IntPtr menu, IntPtr instance, IntPtr param);
 
-    [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+    [DllImport("user32.dll")]
+    private static extern bool DestroyWindow(IntPtr hwnd);
 
-    [DllImport("gdi32.dll")] private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
-    [DllImport("gdi32.dll")] private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hwnd);
 
-    [DllImport("opengl32.dll")] private static extern IntPtr wglCreateContext(IntPtr hdc);
-    [DllImport("opengl32.dll")] private static extern bool wglDeleteContext(IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentDC();
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentContext();
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetProcAddress(string name);
-    [DllImport("opengl32.dll")] private static extern void glViewport(int x, int y, int w, int h);
-    [DllImport("opengl32.dll")] private static extern void glDisable(uint cap);
-    [DllImport("opengl32.dll")] private static extern void glColorMask(bool r, bool g, bool b, bool a);
-    [DllImport("opengl32.dll")] private static extern void glClearColor(float r, float g, float b, float a);
-    [DllImport("opengl32.dll")] private static extern void glClearStencil(int s);
-    [DllImport("opengl32.dll")] private static extern void glClear(uint mask);
-    [DllImport("opengl32.dll")] private static extern void glFinish();
-    [DllImport("opengl32.dll")] private static extern void glGenTextures(int n, uint[] textures);
-    [DllImport("opengl32.dll")] private static extern void glDeleteTextures(int n, uint[] textures);
-    [DllImport("opengl32.dll")] private static extern void glBindTexture(uint target, uint texture);
-    [DllImport("opengl32.dll")] private static extern void glTexParameteri(uint target, uint pname, int param);
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglCreateContext(IntPtr hdc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglDeleteContext(IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentDC();
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentContext();
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetProcAddress(string name);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glViewport(int x, int y, int w, int h);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glDisable(uint cap);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glColorMask(bool r, bool g, bool b, bool a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearColor(float r, float g, float b, float a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearStencil(int s);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClear(uint mask);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glFinish();
+
+    [DllImport("opengl32.dll")]
+    private static extern void glGenTextures(int n, uint[] textures);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glDeleteTextures(int n, uint[] textures);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glBindTexture(uint target, uint texture);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glTexParameteri(uint target, uint pname, int param);
 }

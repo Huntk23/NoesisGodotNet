@@ -9,6 +9,7 @@ public class WidgetLabViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler PropertyChanged;
 
     private string _playerName = "";
+
     public string PlayerName
     {
         get => _playerName;
@@ -27,6 +28,7 @@ public class WidgetLabViewModel : INotifyPropertyChanged
         string.IsNullOrWhiteSpace(PlayerName) ? "Hello, stranger." : $"Hello, {PlayerName}!";
 
     private bool _awesomeMode;
+
     public bool AwesomeMode
     {
         get => _awesomeMode;

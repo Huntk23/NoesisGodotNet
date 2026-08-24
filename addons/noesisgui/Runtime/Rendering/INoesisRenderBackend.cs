@@ -14,7 +14,7 @@ internal interface INoesisRenderBackend : IDisposable
 {
     Noesis.RenderDevice Device { get; }
 
-    /// <summary>True, if the output texture is vertically flipped (GPU-side render targets are bottom-up in GL), the displaying node compensates.</summary>
+    /// <summary>True if the output texture uses GL's bottom-up row order; the displaying node compensates while sampling.</summary>
     bool OutputIsFlipped { get; }
 
     void Init(int width, int height);

@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 namespace NoesisGodot;
@@ -15,19 +16,24 @@ namespace NoesisGodot;
 public partial class NoesisView3D : StaticBody3D
 {
     /// <summary>XAML to load, relative to the provider root, e.g. "ThemeLab.xaml".</summary>
-    [Export] public string Xaml { get; set; } = "";
+    [Export]
+    public string Xaml { get; set; } = "";
 
     /// <summary>Panel size in world units (meters).</summary>
-    [Export] public Vector2 PanelSize { get; set; } = new(1.6f, 0.9f);
+    [Export]
+    public Vector2 PanelSize { get; set; } = new(1.6f, 0.9f);
 
     /// <summary>Texture resolution per world unit. 512 → a 1.6x0.9 panel renders at 819x460.</summary>
-    [Export(PropertyHint.Range, "64,2048,1")] public int PixelsPerMeter { get; set; } = 512;
+    [Export(PropertyHint.Range, "64,2048,1")]
+    public int PixelsPerMeter { get; set; } = 512;
 
     /// <summary>Unshaded (UI-like, ignores lighting). Disable for lit surfaces.</summary>
-    [Export] public bool Unshaded { get; set; } = true;
+    [Export]
+    public bool Unshaded { get; set; } = true;
 
     /// <summary>Render the back face too.</summary>
-    [Export] public bool DoubleSided { get; set; }
+    [Export]
+    public bool DoubleSided { get; set; }
 
     private static NoesisView3D _keyboardOwner;
 
@@ -35,7 +41,18 @@ public partial class NoesisView3D : StaticBody3D
     private MeshInstance3D _meshInstance;
     private StandardMaterial3D _material;
     private Vector2I _pixelSize;
+    private Vector2I _lastPointerPosition;
+    private CapturedMouseButtons _capturedMouseButtons;
     private bool _hovered;
+
+    [Flags]
+    private enum CapturedMouseButtons : byte
+    {
+        None = 0,
+        Left = 1,
+        Right = 2,
+        Middle = 4,
+    }
 
     public object ViewModel
     {
@@ -44,13 +61,12 @@ public partial class NoesisView3D : StaticBody3D
     }
 
     public Noesis.View View => _host.View;
+
     public Noesis.FrameworkElement Root => _host.Root;
 
     public override void _Ready()
     {
-        _pixelSize = new Vector2I(
-            Mathf.Max((int)(PanelSize.X * PixelsPerMeter), 1),
-            Mathf.Max((int)(PanelSize.Y * PixelsPerMeter), 1));
+        _pixelSize = new Vector2I(Mathf.Max((int) (PanelSize.X * PixelsPerMeter), 1), Mathf.Max((int) (PanelSize.Y * PixelsPerMeter), 1));
 
         if (!_host.Init(Xaml, _pixelSize, Name))
         {
@@ -61,15 +77,11 @@ public partial class NoesisView3D : StaticBody3D
         {
             Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
             BlendMode = BaseMaterial3D.BlendModeEnum.PremultAlpha, // Noesis outputs premultiplied
-            ShadingMode = Unshaded
-                ? BaseMaterial3D.ShadingModeEnum.Unshaded
-                : BaseMaterial3D.ShadingModeEnum.PerPixel,
-            CullMode = DoubleSided
-                ? BaseMaterial3D.CullModeEnum.Disabled
-                : BaseMaterial3D.CullModeEnum.Back,
+            ShadingMode = Unshaded ? BaseMaterial3D.ShadingModeEnum.Unshaded : BaseMaterial3D.ShadingModeEnum.PerPixel,
+            CullMode = DoubleSided ? BaseMaterial3D.CullModeEnum.Disabled : BaseMaterial3D.CullModeEnum.Back,
         };
 
-        // Zero-copy backend renders GPU-side (bottom-up); flip sampling.
+        // GL-backed outputs use bottom-up row order; flip while sampling instead of copying rows on the CPU.
         if (_host.OutputIsFlipped)
         {
             _material.Uv1Scale = new Vector3(1f, -1f, 1f);
@@ -94,16 +106,12 @@ public partial class NoesisView3D : StaticBody3D
         // Cursor forwarding, scoped to hover (a 3D panel doesn't own a screen region the way a Control does, so we set the global cursor and reset
         // it when the mouse leaves the collider).
         MouseEntered += () => _hovered = true;
-        MouseExited += () =>
-        {
-            _hovered = false;
-            Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
-        };
+        MouseExited += ResetCursor;
         _host.CursorChanged += shape =>
         {
             if (_hovered)
             {
-                Input.SetDefaultCursorShape((Input.CursorShape)(int)shape);
+                Input.SetDefaultCursorShape((Input.CursorShape) (int) shape);
             }
         };
     }
@@ -115,6 +123,7 @@ public partial class NoesisView3D : StaticBody3D
             return;
         }
 
+        ReleaseButtonsNoLongerPressed();
         NoesisHotReload.Pump();
 
         if (_host.RenderFrame())
@@ -132,6 +141,7 @@ public partial class NoesisView3D : StaticBody3D
         }
 
         Vector2I px = WorldToPixels(eventPosition);
+        _lastPointerPosition = px;
 
         switch (@event)
         {
@@ -143,12 +153,13 @@ public partial class NoesisView3D : StaticBody3D
                 switch (button.ButtonIndex)
                 {
                     case MouseButton.WheelUp when button.Pressed:
-                        _host.View.Scroll(px.X, px.Y, (int)(120 * (button.Factor > 0 ? button.Factor : 1f)));
+                        _host.View.Scroll(px.X, px.Y, (int) (120 * (button.Factor > 0 ? button.Factor : 1f)));
                         break;
                     case MouseButton.WheelDown when button.Pressed:
-                        _host.View.Scroll(px.X, px.Y, -(int)(120 * (button.Factor > 0 ? button.Factor : 1f)));
+                        _host.View.Scroll(px.X, px.Y, -(int) (120 * (button.Factor > 0 ? button.Factor : 1f)));
                         break;
                     case MouseButton.Left or MouseButton.Right or MouseButton.Middle:
+                        CapturedMouseButtons capturedButton = ToCapturedButton(button.ButtonIndex);
                         Noesis.MouseButton nsButton = button.ButtonIndex switch
                         {
                             MouseButton.Right => Noesis.MouseButton.Right,
@@ -157,6 +168,7 @@ public partial class NoesisView3D : StaticBody3D
                         };
                         if (button.Pressed)
                         {
+                            _capturedMouseButtons |= capturedButton;
                             GrabKeyboard();
                             if (button.DoubleClick)
                             {
@@ -169,10 +181,12 @@ public partial class NoesisView3D : StaticBody3D
                         }
                         else
                         {
-                            _host.View.MouseButtonUp(px.X, px.Y, nsButton);
+                            ReleaseCapturedButton(capturedButton, nsButton);
                         }
+
                         break;
                 }
+
                 break;
         }
     }
@@ -198,9 +212,10 @@ public partial class NoesisView3D : StaticBody3D
                     {
                         handled |= _host.View.KeyDown(nsKey);
                     }
+
                     if (key.Unicode != 0)
                     {
-                        handled |= _host.View.Char((uint)key.Unicode);
+                        handled |= _host.View.Char((uint) key.Unicode);
                     }
                 }
                 else if (nsKey != Noesis.Key.None)
@@ -208,6 +223,7 @@ public partial class NoesisView3D : StaticBody3D
                     _host.View.KeyUp(nsKey);
                     handled = true;
                 }
+
                 break;
             }
 
@@ -218,6 +234,7 @@ public partial class NoesisView3D : StaticBody3D
                 {
                     handled = joy.Pressed ? _host.View.KeyDown(nsKey) : _host.View.KeyUp(nsKey);
                 }
+
                 break;
             }
         }
@@ -234,10 +251,12 @@ public partial class NoesisView3D : StaticBody3D
         {
             return;
         }
+
         if (GodotObject.IsInstanceValid(_keyboardOwner))
         {
             _keyboardOwner._host.Deactivate();
         }
+
         _keyboardOwner = this;
         _host.Activate();
     }
@@ -249,7 +268,64 @@ public partial class NoesisView3D : StaticBody3D
         Vector3 local = ToLocal(worldPosition);
         float u = Mathf.Clamp(local.X / PanelSize.X + 0.5f, 0f, 1f);
         float v = Mathf.Clamp(0.5f - local.Y / PanelSize.Y, 0f, 1f);
-        return new Vector2I((int)(u * _pixelSize.X), (int)(v * _pixelSize.Y));
+        int x = Mathf.Clamp((int) (u * _pixelSize.X), 0, _pixelSize.X - 1);
+        int y = Mathf.Clamp((int) (v * _pixelSize.Y), 0, _pixelSize.Y - 1);
+        return new Vector2I(x, y);
+    }
+
+    private void ReleaseButtonsNoLongerPressed()
+    {
+        ReleaseIfNoLongerPressed(CapturedMouseButtons.Left, MouseButton.Left, Noesis.MouseButton.Left);
+        ReleaseIfNoLongerPressed(CapturedMouseButtons.Right, MouseButton.Right, Noesis.MouseButton.Right);
+        ReleaseIfNoLongerPressed(CapturedMouseButtons.Middle, MouseButton.Middle, Noesis.MouseButton.Middle);
+    }
+
+    private void ReleaseIfNoLongerPressed(CapturedMouseButtons captured, MouseButton godotButton, Noesis.MouseButton noesisButton)
+    {
+        if ((_capturedMouseButtons & captured) != 0 && !Input.IsMouseButtonPressed(godotButton))
+        {
+            ReleaseCapturedButton(captured, noesisButton);
+        }
+    }
+
+    private void ReleaseCapturedButton(CapturedMouseButtons captured, Noesis.MouseButton noesisButton)
+    {
+        if ((_capturedMouseButtons & captured) == 0)
+        {
+            return;
+        }
+
+        _host.View.MouseButtonUp(_lastPointerPosition.X, _lastPointerPosition.Y, noesisButton);
+        _capturedMouseButtons &= ~captured;
+    }
+
+    private void ReleaseAllCapturedButtons()
+    {
+        if (!_host.IsValid)
+        {
+            _capturedMouseButtons = CapturedMouseButtons.None;
+            return;
+        }
+
+        ReleaseCapturedButton(CapturedMouseButtons.Left, Noesis.MouseButton.Left);
+        ReleaseCapturedButton(CapturedMouseButtons.Right, Noesis.MouseButton.Right);
+        ReleaseCapturedButton(CapturedMouseButtons.Middle, Noesis.MouseButton.Middle);
+    }
+
+    private static CapturedMouseButtons ToCapturedButton(MouseButton button) => button switch
+    {
+        MouseButton.Right => CapturedMouseButtons.Right,
+        MouseButton.Middle => CapturedMouseButtons.Middle,
+        _ => CapturedMouseButtons.Left,
+    };
+
+    private void ResetCursor()
+    {
+        if (_hovered)
+        {
+            Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
+            _hovered = false;
+        }
     }
 
     public override void _ExitTree()
@@ -258,6 +334,9 @@ public partial class NoesisView3D : StaticBody3D
         {
             _keyboardOwner = null;
         }
+
+        ResetCursor();
+        ReleaseAllCapturedButtons();
         _host.Dispose();
     }
 }

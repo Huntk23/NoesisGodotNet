@@ -34,8 +34,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
     private int _width;
     private int _height;
 
-    private byte[] _readback;   // raw glReadPixels output (bottom-up)
-    private byte[] _flipped;    // row-flipped RGBA for Godot
+    private byte[] _readback; // raw glReadPixels output (bottom-up)
     private Image _image;
     private ImageTexture _texture;
 
@@ -43,8 +42,8 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
 
     public Noesis.RenderDevice Device => _device;
 
-    /// <summary>Readback path flips rows on the CPU, so output is upright.</summary>
-    public bool OutputIsFlipped => false;
+    /// <summary>The readback remains in GL's bottom-up row order; the displaying node flips sampling.</summary>
+    public bool OutputIsFlipped => true;
 
     public void Init(int width, int height)
     {
@@ -52,8 +51,8 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
         _height = Math.Max(height, 1);
 
         // Hidden top-level window; "STATIC" is a predefined class, so no RegisterClass dance is needed. Never shown.
-        _hwnd = CreateWindowExW(0, "STATIC", "NoesisOffscreen", WS_POPUP,
-            0, 0, _width, _height, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        _hwnd = CreateWindowExW(0, "STATIC", "NoesisOffscreen", WS_POPUP, 0, 0, _width, _height, IntPtr.Zero,
+            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         if (_hwnd == IntPtr.Zero)
         {
             throw new InvalidOperationException("[NoesisGUI] CreateWindowExW failed.");
@@ -63,7 +62,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
 
         var pfd = new PIXELFORMATDESCRIPTOR
         {
-            nSize = (ushort)Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
+            nSize = (ushort) Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
             nVersion = 1,
             dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
             iPixelType = PFD_TYPE_RGBA,
@@ -102,8 +101,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
     {
         _width = Math.Max(width, 1);
         _height = Math.Max(height, 1);
-        SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, _width, _height,
-            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+        SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, _width, _height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
         AllocateBuffers();
     }
 
@@ -124,6 +122,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
         {
             _texture.Update(frame);
         }
+
         return _texture;
     }
 
@@ -165,14 +164,8 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
             EndContext();
         }
 
-        // GL rows are bottom-up; Godot images are top-down.
-        int stride = _width * 4;
-        for (int y = 0; y < _height; y++)
-        {
-            Buffer.BlockCopy(_readback, (_height - 1 - y) * stride, _flipped, y * stride, stride);
-        }
-
-        _image.SetData(_width, _height, false, Image.Format.Rgba8, _flipped);
+        // Keep GL's bottom-up row order. NoesisView/NoesisView3D flip texture sampling without another full-frame CPU copy.
+        _image.SetData(_width, _height, false, Image.Format.Rgba8, _readback);
         return _image;
     }
 
@@ -202,15 +195,22 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
 
         if (_hglrc != IntPtr.Zero)
         {
-            wglMakeCurrent(IntPtr.Zero, IntPtr.Zero);
+            // EndContext normally restored Godot's Compatibility-renderer context. Do not unbind that context while deleting ours.
+            if (wglGetCurrentContext() == _hglrc)
+            {
+                wglMakeCurrent(IntPtr.Zero, IntPtr.Zero);
+            }
+
             wglDeleteContext(_hglrc);
             _hglrc = IntPtr.Zero;
         }
+
         if (_hdc != IntPtr.Zero)
         {
             ReleaseDC(_hwnd, _hdc);
             _hdc = IntPtr.Zero;
         }
+
         if (_hwnd != IntPtr.Zero)
         {
             DestroyWindow(_hwnd);
@@ -221,8 +221,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
     private void AllocateBuffers()
     {
         _readback = new byte[_width * _height * 4];
-        _flipped = new byte[_width * _height * 4];
-        _image = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, _flipped);
+        _image = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, _readback);
     }
 
     private static T GetGLProc<T>(string name) where T : class
@@ -232,6 +231,7 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException($"[NoesisGUI] Missing GL entry point '{name}'.");
         }
+
         return Marshal.GetDelegateForFunctionPointer<T>(addr);
     }
 
@@ -276,31 +276,66 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName,
-        uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
+    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName, uint style, int x, int y, int w, int h, IntPtr parent,
+        IntPtr menu, IntPtr instance, IntPtr param);
 
-    [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
-    [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after,
-        int x, int y, int w, int h, uint flags);
+    [DllImport("user32.dll")]
+    private static extern bool DestroyWindow(IntPtr hwnd);
 
-    [DllImport("gdi32.dll")] private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
-    [DllImport("gdi32.dll")] private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hwnd);
 
-    [DllImport("opengl32.dll")] private static extern IntPtr wglCreateContext(IntPtr hdc);
-    [DllImport("opengl32.dll")] private static extern bool wglDeleteContext(IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentDC();
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentContext();
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetProcAddress(string name);
-    [DllImport("opengl32.dll")] private static extern void glViewport(int x, int y, int w, int h);
-    [DllImport("opengl32.dll")] private static extern void glDisable(uint cap);
-    [DllImport("opengl32.dll")] private static extern void glColorMask(bool r, bool g, bool b, bool a);
-    [DllImport("opengl32.dll")] private static extern void glClearColor(float r, float g, float b, float a);
-    [DllImport("opengl32.dll")] private static extern void glClearStencil(int s);
-    [DllImport("opengl32.dll")] private static extern void glClear(uint mask);
-    [DllImport("opengl32.dll")] private static extern void glPixelStorei(uint pname, int param);
-    [DllImport("opengl32.dll")] private static extern void glReadPixels(int x, int y, int w, int h,
-        uint format, uint type, byte[] pixels);
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int w, int h, uint flags);
+
+    [DllImport("gdi32.dll")]
+    private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglCreateContext(IntPtr hdc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglDeleteContext(IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentDC();
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentContext();
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetProcAddress(string name);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glViewport(int x, int y, int w, int h);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glDisable(uint cap);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glColorMask(bool r, bool g, bool b, bool a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearColor(float r, float g, float b, float a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearStencil(int s);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClear(uint mask);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glPixelStorei(uint pname, int param);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glReadPixels(int x, int y, int w, int h, uint format, uint type, byte[] pixels);
 }

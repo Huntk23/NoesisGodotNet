@@ -15,6 +15,7 @@ public class MainMenuViewModel : INotifyPropertyChanged
     public string Title => "MY GAME";
 
     private string _status = "Ready.";
+
     public string Status
     {
         get => _status;
@@ -29,7 +30,9 @@ public class MainMenuViewModel : INotifyPropertyChanged
     }
 
     public ICommand NewGameCommand { get; }
+
     public ICommand OptionsCommand { get; }
+
     public ICommand QuitCommand { get; }
 
     public MainMenuViewModel(Action onQuit = null)

@@ -10,13 +10,15 @@ namespace NoesisGodot;
 public sealed class NoesisViewHost : IDisposable
 {
     public string Xaml { get; private set; } = "";
+
     public Noesis.View View { get; private set; }
+
     public Noesis.FrameworkElement Root { get; private set; }
 
     /// <summary>The rendered frame. The instance is replaced on resize — re-read after RenderFrame().</summary>
     public Texture2D Texture { get; private set; }
 
-    /// <summary>True, when the backend renders GPU-side (zero-copy) and the output is bottom-up; the displaying node compensates (FlipV/UV scale).</summary>
+    /// <summary>True when the backend output is bottom-up; the displaying node compensates with FlipV or a UV transform.</summary>
     public bool OutputIsFlipped => _backend?.OutputIsFlipped ?? false;
 
     public bool IsValid => View != null && _backend != null;
@@ -26,6 +28,7 @@ public sealed class NoesisViewHost : IDisposable
     private ulong _startTicksMs;
     private object _viewModel;
     private string _ownerName = "";
+    private bool _isActive;
 
     /// <summary>WPF-style DataContext for the root element. Can be set before Init.</summary>
     public object ViewModel
@@ -68,9 +71,10 @@ public sealed class NoesisViewHost : IDisposable
             return false;
         }
 
+        Noesis.FrameworkElement root;
         try
         {
-            Root = (Noesis.FrameworkElement)Noesis.GUI.LoadXaml(Xaml);
+            root = (Noesis.FrameworkElement) Noesis.GUI.LoadXaml(Xaml);
         }
         catch (Exception e)
         {
@@ -80,35 +84,39 @@ public sealed class NoesisViewHost : IDisposable
 
         if (_viewModel != null)
         {
-            Root.DataContext = _viewModel;
+            root.DataContext = _viewModel;
         }
 
-        View = Noesis.GUI.CreateView(Root);
-        View.SetSize(_size.X, _size.Y);
-
+        Noesis.View view = null;
+        INoesisRenderBackend backend = null;
+        bool rendererInitialized = false;
         try
         {
-            _backend = CreateBackend();
+            view = Noesis.GUI.CreateView(root);
+            view.SetSize(_size.X, _size.Y);
+            backend = CreateBackend();
+            InitializeRenderer(view, backend);
+            rendererInitialized = true;
+            if (_isActive)
+            {
+                view.Activate();
+            }
         }
         catch (Exception e)
         {
-            GD.PushError($"[NoesisGUI] {_ownerName}: render backend init failed: {e.Message}");
-            View = null;
-            Root = null;
+            if (rendererInitialized)
+            {
+                TryShutdownRenderer(view, backend, "failed initialization cleanup");
+            }
+
+            TryDisposeBackend(backend, "failed initialization cleanup");
+            GD.PushError($"[NoesisGUI] {_ownerName}: view initialization failed: {e.Message}");
             return false;
         }
 
-        // Renderer must be initialized with our GL context current.
-        _backend.BeginContext();
-        try
-        {
-            View.Renderer.Init(_backend.Device);
-        }
-        finally
-        {
-            _backend.EndContext();
-        }
-
+        Root = root;
+        View = view;
+        _backend = backend;
         _startTicksMs = Time.GetTicksMsec();
         NoesisHotReload.Register(this);
         return true;
@@ -122,53 +130,41 @@ public sealed class NoesisViewHost : IDisposable
         // Zero-copy under Compatibility (GL): shared context (Windows).
         if (wantZeroCopy && SharedGLBackend.IsSupported())
         {
-            var shared = new SharedGLBackend();
             try
             {
-                shared.Init(_size.X, _size.Y);
-                return shared;
+                return InitializeBackend(new SharedGLBackend());
             }
             catch (Exception e)
             {
-                shared.Dispose();
-                GD.PushWarning($"[NoesisGUI] {_ownerName}: zero-copy GL init failed, " +
-                               $"falling back to readback: {e.Message}");
+                GD.PushWarning($"[NoesisGUI] {_ownerName}: zero-copy GL init failed, " + $"falling back to readback: {e.Message}");
             }
         }
 
         // Zero-copy under Forward+/Mobile (Vulkan): external-memory interop (Windows).
         if (wantZeroCopy && VkSharedGLBackend.IsSupported())
         {
-            var vk = new VkSharedGLBackend();
             try
             {
-                vk.Init(_size.X, _size.Y);
-                return vk;
+                return InitializeBackend(new VkSharedGLBackend());
             }
             catch (Exception e)
             {
-                vk.Dispose();
-                GD.PushWarning($"[NoesisGUI] {_ownerName}: Vulkan-interop init failed, " +
-                               $"falling back to readback: {e.Message}");
+                GD.PushWarning($"[NoesisGUI] {_ownerName}: Vulkan-interop init failed, " + $"falling back to readback: {e.Message}");
             }
         }
 
         // Readback: per-platform offscreen context.
         if (OperatingSystem.IsWindows())
         {
-            var wgl = new OffscreenGLBackend();
-            wgl.Init(_size.X, _size.Y);
-            return wgl;
-        }
-        if (OperatingSystem.IsLinux())
-        {
-            var egl = new EglOffscreenBackend();
-            egl.Init(_size.X, _size.Y);
-            return egl;
+            return InitializeBackend(new OffscreenGLBackend());
         }
 
-        throw new PlatformNotSupportedException(
-            "NoesisGodotNet currently supports Windows and Linux (macOS is on the roadmap).");
+        if (OperatingSystem.IsLinux())
+        {
+            return InitializeBackend(new EglOffscreenBackend());
+        }
+
+        throw new PlatformNotSupportedException("NoesisGodotNet currently supports Windows and Linux (macOS is on the roadmap).");
     }
 
     /// <summary>Ticks and renders one frame into Texture. Returns false if not initialized.</summary>
@@ -197,15 +193,24 @@ public sealed class NoesisViewHost : IDisposable
         {
             return;
         }
+
         _size = size;
         View.SetSize(_size.X, _size.Y);
         _backend.Resize(_size.X, _size.Y);
     }
 
     /// <summary>Activation drives focus visuals (caret blink, active selection).</summary>
-    public void Activate() => View?.Activate();
+    public void Activate()
+    {
+        _isActive = true;
+        View?.Activate();
+    }
 
-    public void Deactivate() => View?.Deactivate();
+    public void Deactivate()
+    {
+        _isActive = false;
+        View?.Deactivate();
+    }
 
     /// <summary>Reloads the XAML and rebuilds the view, preserving the ViewModel.</summary>
     public void ReloadXaml()
@@ -215,74 +220,140 @@ public sealed class NoesisViewHost : IDisposable
             return;
         }
 
-        Noesis.FrameworkElement newRoot;
+        Noesis.FrameworkElement newRoot = null;
+        Noesis.View newView = null;
+        bool rendererInitialized = false;
         try
         {
-            newRoot = (Noesis.FrameworkElement)Noesis.GUI.LoadXaml(Xaml);
+            newRoot = (Noesis.FrameworkElement) Noesis.GUI.LoadXaml(Xaml);
+            if (_viewModel != null)
+            {
+                newRoot.DataContext = _viewModel;
+            }
+
+            newView = Noesis.GUI.CreateView(newRoot);
+            newView.SetSize(_size.X, _size.Y);
+            InitializeRenderer(newView, _backend);
+            rendererInitialized = true;
+            if (_isActive)
+            {
+                newView.Activate();
+            }
         }
         catch (Exception e)
         {
-            // Common during hot-reload: half-written file or invalid markup.
-            if (!NoesisHotReload.Silenced)
+            if (rendererInitialized)
             {
-                GD.PushWarning($"[NoesisGUI] {_ownerName}: reload of '{Xaml}' failed, keeping previous view: {e.Message}");
+                TryShutdownRenderer(newView, _backend, "failed reload cleanup");
             }
-            ReloadFailed?.Invoke(e.Message);
+
+            ReportReloadFailure(e);
             return;
         }
 
-        _backend.BeginContext();
-        try
-        {
-            View?.Renderer.Shutdown();
-        }
-        finally
-        {
-            _backend.EndContext();
-        }
-
+        Noesis.View previousView = View;
         Root = newRoot;
-        if (_viewModel != null)
-        {
-            Root.DataContext = _viewModel;
-        }
-
-        View = Noesis.GUI.CreateView(Root);
-        View.SetSize(_size.X, _size.Y);
-
-        _backend.BeginContext();
-        try
-        {
-            View.Renderer.Init(_backend.Device);
-        }
-        finally
-        {
-            _backend.EndContext();
-        }
-
+        View = newView;
+        TryShutdownRenderer(previousView, _backend, "previous view shutdown after reload");
         ReloadSucceeded?.Invoke();
     }
 
     public void Dispose()
     {
         NoesisHotReload.Unregister(this);
-        if (View != null && _backend != null)
-        {
-            _backend.BeginContext();
-            try
-            {
-                View.Renderer.Shutdown();
-            }
-            finally
-            {
-                _backend.EndContext();
-            }
-        }
-        _backend?.Dispose();
+        TryShutdownRenderer(View, _backend, "view disposal");
+        TryDisposeBackend(_backend, "view disposal");
         _backend = null;
         View = null;
         Root = null;
         Texture = null;
+        _isActive = false;
+    }
+
+    private T InitializeBackend<T>(T backend) where T : INoesisRenderBackend
+    {
+        try
+        {
+            backend.Init(_size.X, _size.Y);
+            return backend;
+        }
+        catch
+        {
+            TryDisposeBackend(backend, "backend initialization cleanup");
+            throw;
+        }
+    }
+
+    private static void InitializeRenderer(Noesis.View view, INoesisRenderBackend backend)
+    {
+        // Renderer initialization must happen while the backend's GL context is current.
+        backend.BeginContext();
+        try
+        {
+            view.Renderer.Init(backend.Device);
+        }
+        finally
+        {
+            backend.EndContext();
+        }
+    }
+
+    private static void ShutdownRenderer(Noesis.View view, INoesisRenderBackend backend)
+    {
+        backend.BeginContext();
+        try
+        {
+            view.Renderer.Shutdown();
+        }
+        finally
+        {
+            backend.EndContext();
+        }
+    }
+
+    private void TryShutdownRenderer(Noesis.View view, INoesisRenderBackend backend, string operation)
+    {
+        if (view == null || backend == null)
+        {
+            return;
+        }
+
+        try
+        {
+            ShutdownRenderer(view, backend);
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"[NoesisGUI] {_ownerName}: {operation} failed: {e.Message}");
+        }
+    }
+
+    private void TryDisposeBackend(INoesisRenderBackend backend, string operation)
+    {
+        if (backend == null)
+        {
+            return;
+        }
+
+        try
+        {
+            backend.Dispose();
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"[NoesisGUI] {_ownerName}: {operation} failed while disposing the render backend: {e.Message}");
+        }
+    }
+
+    private void ReportReloadFailure(Exception e)
+    {
+        // Common during hot-reload: a half-written file, invalid markup, or renderer initialization failure.
+        if (!NoesisHotReload.Silenced)
+        {
+            GD.PushWarning($"[NoesisGUI] {_ownerName}: reload of '{Xaml}' failed, keeping previous view: {e.Message}");
+        }
+
+        ReloadFailed?.Invoke(e.Message);
     }
 
     private static Vector2I Clamp(Vector2I s) => new(Mathf.Max(s.X, 1), Mathf.Max(s.Y, 1));

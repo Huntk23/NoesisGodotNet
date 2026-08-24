@@ -20,6 +20,7 @@ public class GodotFontProvider : Noesis.FontProvider
             GD.Print($"[NoesisGUI] Theme font registered: '{folder}/{filename}'");
             count++;
         }
+
         if (count == 0)
         {
             GD.Print("[NoesisGUI] No embedded theme fonts found (Noesis.App.Theme absent?).");
@@ -44,12 +45,14 @@ public class GodotFontProvider : Noesis.FontProvider
             {
                 continue;
             }
+
             string ext = Path.GetExtension(file).ToLowerInvariant();
             if (ext is ".ttf" or ".otf" or ".ttc")
             {
                 RegisterFont(folder, file);
             }
         }
+
         dir.ListDirEnd();
     }
 
@@ -57,32 +60,25 @@ public class GodotFontProvider : Noesis.FontProvider
     {
         // Embedded theme fonts first: their folder ("Theme/Fonts") is not a res:// location.
         string rawFolder = folder == null ? "" : GodotResourceUtil.GetRawPath(folder);
-        Stream themeFont = NoesisThemeResources.OpenFont(
-            string.IsNullOrEmpty(rawFolder) ? filename : $"{rawFolder.TrimEnd('/')}/{filename}");
+        Stream themeFont = NoesisThemeResources.OpenFont(string.IsNullOrEmpty(rawFolder) ? filename : $"{rawFolder.TrimEnd('/')}/{filename}");
         if (themeFont != null)
         {
             return themeFont;
         }
 
         string resFolder = ResolveFolder(folder);
-        return GodotResourceUtil.OpenRead($"{resFolder.TrimEnd('/')}/{filename}", "Font");
+        return GodotResourceUtil.OpenRead(GodotResourceUtil.JoinPath(resFolder, filename), "Font");
     }
 
     private static string ResolveFolder(System.Uri folder)
     {
-        string raw = folder == null ? "" : folder.IsAbsoluteUri ? folder.AbsolutePath : folder.OriginalString;
-        raw = raw.Replace('\\', '/').Trim('/');
+        string raw = folder == null ? "" : GodotResourceUtil.GetRawPath(folder);
 
-        if (raw.StartsWith("res://"))
+        if (string.IsNullOrEmpty(raw) || raw is "." or "./")
         {
-            return raw;
-        }
-        if (string.IsNullOrEmpty(raw) || raw == ".")
-        {
-            return NoesisServer.GetSetting("noesis_gui/resources/fonts", "res://UI/Fonts");
+            return GodotResourceUtil.ToResPath(NoesisServer.GetSetting("noesis_gui/resources/fonts", "res://UI/Fonts"));
         }
 
-        string root = NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI");
-        return $"{root.TrimEnd('/')}/{raw}";
+        return GodotResourceUtil.ToResPath(raw);
     }
 }

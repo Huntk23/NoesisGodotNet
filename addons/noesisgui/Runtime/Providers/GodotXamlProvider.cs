@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text;
 using Godot;
@@ -24,8 +25,7 @@ public class GodotXamlProvider : Noesis.XamlProvider
             return GodotResourceUtil.OpenRead(resPath, "XAML");
         }
 
-        if (ResourceLoader.Exists(resPath) &&
-            ResourceLoader.Load(resPath) is XamlFile xamlFile)
+        if (ResourceLoader.Exists(resPath) && ResourceLoader.Load(resPath) is XamlFile xamlFile)
         {
             return new MemoryStream(Encoding.UTF8.GetBytes(xamlFile.Source), writable: false);
         }
@@ -45,30 +45,72 @@ public class GodotXamlProvider : Noesis.XamlProvider
 /// <summary>Shared res:// resolution helpers for the providers.</summary>
 public static class GodotResourceUtil
 {
+    private const string ResPrefix = "res://";
+
     public static string ToResPath(System.Uri uri)
     {
         // Noesis passes relative URIs like "MainMenu.xaml" or "Images/logo.png", possibly with a leading '/'. Absolute res:// paths pass through.
         return ToResPath(GetRawPath(uri));
     }
 
-    /// <summary>Normalized relative path from a Noesis URI ("Theme/NoesisTheme.DarkBlue.xaml").</summary>
+    /// <summary>
+    /// Normalizes a Noesis URI while preserving the authority portion of Godot's res:// scheme.
+    /// System.Uri.AbsolutePath alone would turn "res://UI/Main.xaml" into "/Main.xaml" and lose "UI".
+    /// </summary>
     public static string GetRawPath(System.Uri uri)
     {
-        string raw = uri.IsAbsoluteUri ? uri.AbsolutePath : uri.OriginalString;
-        return raw.Replace('\\', '/').TrimStart('/');
+        if (uri == null)
+        {
+            return "";
+        }
+
+        string raw = uri.IsAbsoluteUri && !uri.Scheme.Equals("res", StringComparison.OrdinalIgnoreCase) ? uri.AbsolutePath : uri.OriginalString;
+        return NormalizePath(raw);
     }
 
     public static string ToResPath(string raw)
     {
-        raw = raw.Replace('\\', '/').TrimStart('/');
+        raw = NormalizePath(raw);
 
-        if (raw.StartsWith("res://"))
+        if (IsResPath(raw))
         {
             return raw;
         }
 
-        string root = NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI");
-        return $"{root.TrimEnd('/')}/{raw}";
+        string root = NormalizePath(NoesisServer.GetSetting("noesis_gui/resources/root", "res://UI"));
+        return JoinPath(root, raw);
+    }
+
+    public static string NormalizePath(string raw)
+    {
+        string normalized = (raw ?? "").Replace('\\', '/');
+        if (normalized.StartsWith(ResPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return ResPrefix + normalized[ResPrefix.Length..].TrimStart('/');
+        }
+
+        return normalized.TrimStart('/');
+    }
+
+    public static bool IsResPath(string path) =>
+        path?.StartsWith(ResPrefix, StringComparison.OrdinalIgnoreCase) == true;
+
+    public static string JoinPath(string basePath, string relativePath)
+    {
+        basePath = NormalizePath(basePath);
+        relativePath = NormalizePath(relativePath);
+
+        if (IsResPath(relativePath) || string.IsNullOrEmpty(basePath))
+        {
+            return relativePath;
+        }
+
+        if (string.IsNullOrEmpty(relativePath))
+        {
+            return basePath;
+        }
+
+        return basePath.EndsWith('/') ? basePath + relativePath : $"{basePath}/{relativePath}";
     }
 
     public static Stream OpenRead(string resPath, string kind)
