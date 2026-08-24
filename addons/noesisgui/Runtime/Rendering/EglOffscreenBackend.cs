@@ -103,7 +103,6 @@ internal sealed class EglOffscreenBackend : INoesisRenderBackend
         }
 
         AllocateBuffers();
-        GD.Print($"[NoesisGUI] EGL offscreen backend ready ({_width}x{_height}).");
     }
 
     public Texture2D RenderFrame(Noesis.View view, double timeSeconds)

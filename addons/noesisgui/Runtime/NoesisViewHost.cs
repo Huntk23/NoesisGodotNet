@@ -21,6 +21,9 @@ public sealed class NoesisViewHost : IDisposable
     /// <summary>True when the backend output is bottom-up; the displaying node compensates with FlipV or a UV transform.</summary>
     public bool OutputIsFlipped => _backend?.OutputIsFlipped ?? false;
 
+    /// <summary>The selected render backend and why it was selected.</summary>
+    public NoesisRenderingStatus RenderingStatus { get; private set; } = NoesisRenderingStatus.NotInitialized;
+
     public bool IsValid => View != null && _backend != null;
 
     private INoesisRenderBackend _backend;
@@ -59,6 +62,7 @@ public sealed class NoesisViewHost : IDisposable
 
     public bool Init(string xaml, Vector2I size, string ownerName)
     {
+        RenderingStatus = NoesisRenderingStatus.NotInitialized;
         _ownerName = ownerName;
         Xaml = xaml ?? "";
         _size = Clamp(size);
@@ -89,12 +93,22 @@ public sealed class NoesisViewHost : IDisposable
 
         Noesis.View view = null;
         INoesisRenderBackend backend = null;
+        NoesisRenderingStatus selectedStatus = null;
         bool rendererInitialized = false;
         try
         {
             view = Noesis.GUI.CreateView(root);
             view.SetSize(_size.X, _size.Y);
-            backend = CreateBackend();
+            bool wantZeroCopy = NoesisServer.GetSettingBool("noesis_gui/rendering/zero_copy", true);
+            NoesisRenderBackendResult backendResult = NoesisRenderBackendFactory.Create(_size.X, _size.Y, _ownerName, wantZeroCopy);
+            RenderingStatus = backendResult.Status;
+            if (!backendResult.Succeeded)
+            {
+                throw backendResult.Error;
+            }
+
+            backend = backendResult.Backend;
+            selectedStatus = backendResult.Status;
             InitializeRenderer(view, backend);
             rendererInitialized = true;
             if (_isActive)
@@ -104,6 +118,11 @@ public sealed class NoesisViewHost : IDisposable
         }
         catch (Exception e)
         {
+            if (selectedStatus?.IsReady == true)
+            {
+                RenderingStatus = NoesisRenderingStatus.Unavailable($"{selectedStatus.BackendName} initialized, but Noesis view setup failed: {e.Message}");
+            }
+
             if (rendererInitialized)
             {
                 TryShutdownRenderer(view, backend, "failed initialization cleanup");
@@ -120,51 +139,6 @@ public sealed class NoesisViewHost : IDisposable
         _startTicksMs = Time.GetTicksMsec();
         NoesisHotReload.Register(this);
         return true;
-    }
-
-    /// <summary>Picks the fastest backend the current platform + configuration supports.</summary>
-    private INoesisRenderBackend CreateBackend()
-    {
-        bool wantZeroCopy = NoesisServer.GetSettingBool("noesis_gui/rendering/zero_copy", true);
-
-        // Zero-copy under Compatibility (GL): shared context (Windows).
-        if (wantZeroCopy && SharedGLBackend.IsSupported())
-        {
-            try
-            {
-                return InitializeBackend(new SharedGLBackend());
-            }
-            catch (Exception e)
-            {
-                GD.PushWarning($"[NoesisGUI] {_ownerName}: zero-copy GL init failed, " + $"falling back to readback: {e.Message}");
-            }
-        }
-
-        // Zero-copy under Forward+/Mobile (Vulkan): external-memory interop (Windows).
-        if (wantZeroCopy && VkSharedGLBackend.IsSupported())
-        {
-            try
-            {
-                return InitializeBackend(new VkSharedGLBackend());
-            }
-            catch (Exception e)
-            {
-                GD.PushWarning($"[NoesisGUI] {_ownerName}: Vulkan-interop init failed, " + $"falling back to readback: {e.Message}");
-            }
-        }
-
-        // Readback: per-platform offscreen context.
-        if (OperatingSystem.IsWindows())
-        {
-            return InitializeBackend(new OffscreenGLBackend());
-        }
-
-        if (OperatingSystem.IsLinux())
-        {
-            return InitializeBackend(new EglOffscreenBackend());
-        }
-
-        throw new PlatformNotSupportedException("NoesisGodotNet currently supports Windows and Linux (macOS is on the roadmap).");
     }
 
     /// <summary>Ticks and renders one frame into Texture. Returns false if not initialized.</summary>
@@ -268,20 +242,7 @@ public sealed class NoesisViewHost : IDisposable
         Root = null;
         Texture = null;
         _isActive = false;
-    }
-
-    private T InitializeBackend<T>(T backend) where T : INoesisRenderBackend
-    {
-        try
-        {
-            backend.Init(_size.X, _size.Y);
-            return backend;
-        }
-        catch
-        {
-            TryDisposeBackend(backend, "backend initialization cleanup");
-            throw;
-        }
+        RenderingStatus = NoesisRenderingStatus.NotInitialized;
     }
 
     private static void InitializeRenderer(Noesis.View view, INoesisRenderBackend backend)

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.0 - Backend capabilities
+
+- Extracted backend probing, selection, initialization, and fallback from
+  `NoesisViewHost` into a dedicated backend factory
+- Added deterministic selection tests for Windows, Linux, macOS, zero-copy,
+  and readback combinations
+- Added public per-view `RenderingStatus` diagnostics to `NoesisView` and
+  `NoesisView3D`
+- Consolidated backend startup reporting into one selected-backend message per
+  view, including fallback reasons
+- Reworked the README around installation, supported platforms, examples, and
+  rendering behavior
+
 ## 0.10.1 - Test foundation
 
 - Added a standalone xUnit suite for `res://` path normalization and

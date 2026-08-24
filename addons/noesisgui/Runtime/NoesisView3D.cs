@@ -64,6 +64,9 @@ public partial class NoesisView3D : StaticBody3D
 
     public Noesis.FrameworkElement Root => _host.Root;
 
+    /// <summary>The selected render backend and why it was selected.</summary>
+    public NoesisRenderingStatus RenderingStatus => _host.RenderingStatus;
+
     public override void _Ready()
     {
         _pixelSize = new Vector2I(Mathf.Max((int) (PanelSize.X * PixelsPerMeter), 1), Mathf.Max((int) (PanelSize.Y * PixelsPerMeter), 1));
