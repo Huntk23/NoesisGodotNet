@@ -60,18 +60,19 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
     public bool OutputIsFlipped => true;
 
     private static bool? _deviceSupportsExport;
+    private static string _deviceSupportReason = "";
 
-    public static bool IsSupported()
+    public static NoesisBackendProbe Probe()
     {
         if (!OperatingSystem.IsWindows())
         {
-            return false;
+            return NoesisBackendProbe.Unsupported("Win32 external-memory handles require Windows.");
         }
 
         RenderingDevice rd = RenderingServer.GetRenderingDevice();
         if (rd == null)
         {
-            return false; // Compatibility renderer
+            return NoesisBackendProbe.Unsupported("Godot is using the Compatibility renderer, so no RenderingDevice is available.");
         }
 
         // Probe the export extension BEFORE any GL/Noesis objects exist: a half-initialized attempt is wasted work and risks side effects
@@ -84,16 +85,17 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
                 _deviceSupportsExport = VulkanInterop.SupportsWin32HandleExport(device);
                 if (_deviceSupportsExport == false)
                 {
-                    GD.Print("[NoesisGUI] Vulkan zero-copy unavailable: Godot's device lacks " + "VK_KHR_external_memory_win32; using readback under Forward+/Mobile.");
+                    _deviceSupportReason = "Godot's Vulkan device does not expose VK_KHR_external_memory_win32.";
                 }
             }
-            catch
+            catch (Exception exception)
             {
                 _deviceSupportsExport = false;
+                _deviceSupportReason = $"Vulkan capability probing failed: {exception.Message}";
             }
         }
 
-        return _deviceSupportsExport == true;
+        return _deviceSupportsExport == true ? NoesisBackendProbe.Supported() : NoesisBackendProbe.Unsupported(_deviceSupportReason);
     }
 
     public void Init(int width, int height)
@@ -129,8 +131,6 @@ internal sealed class VkSharedGLBackend : INoesisRenderBackend
         {
             EndContext();
         }
-
-        GD.Print($"[NoesisGUI] Vulkan-interop GL backend ready ({_width}x{_height}).");
     }
 
     public Texture2D RenderFrame(Noesis.View view, double timeSeconds)

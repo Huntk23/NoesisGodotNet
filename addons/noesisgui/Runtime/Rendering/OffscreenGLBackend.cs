@@ -94,7 +94,6 @@ public sealed class OffscreenGLBackend : INoesisRenderBackend
         }
 
         AllocateBuffers();
-        GD.Print($"[NoesisGUI] Offscreen GL backend ready ({_width}x{_height}).");
     }
 
     public void Resize(int width, int height)

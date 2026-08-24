@@ -1,166 +1,126 @@
 # NoesisGodotNet
 
-Host [NoesisGUI](https://www.noesisengine.com/) XAML views inside Godot 4 with true WPF-style MVVM in C#. Design UI in
-Noesis Studio / Blend, bind it to plain `INotifyPropertyChanged` ViewModels, and composite it like any Godot Control.
+Host [NoesisGUI](https://www.noesisengine.com/) XAML views in Godot 4 .NET. Build UI in Noesis Studio or Blend, bind it
+to ordinary C# view models, and use it as screen-space or world-space Godot UI.
 
-> Unofficial community integration and is not affiliated with or endorsed by Noesis Technologies (yet?).
+> Independent, unofficial community
+>
+integration, [endorsed by Noesis Technologies in its developer/community forum](https://www.noesisengine.com/forums/viewtopic.php?p=545#p545).
+> It is not developed by or affiliated with Noesis Technologies.
 
-There is no official Noesis <-> Godot integration anywhere; this is the first. Verified with Godot 4.7.1 .NET
-(Forward+/Vulkan) and Noesis 3.2.13: XAML loading, MVVM data binding, commands, styled/templated controls, mouse +
-keyboard input, and clean shutdown all functional.
+The plugin supports MVVM binding and commands, styled controls, mouse, keyboard, touch and gamepad input, XAML
+hot-reload, 2D controls, and 3D panels. The repository currently targets Godot 4.7.1 and NoesisGUI 3.2.
 
-## Requirements
+## Requirements and platforms
 
-- Godot 4+ **.NET** build (tested on 4.7.1)
+- Godot 4 .NET
 - .NET 8 SDK
-- A NoesisGUI license - see [pricing](https://www.noesisengine.com/licensing.php)
-- Windows (the current render backend uses WGL; see roadmap)
+- A [NoesisGUI license](https://www.noesisengine.com/licensing.php) for licensed use
 
-## Installing in your game
+| Platform | Rendering path                                                           | Status            |
+|----------|--------------------------------------------------------------------------|-------------------|
+| Windows  | Shared OpenGL zero-copy, engine-gated Vulkan interop, or OpenGL readback | Supported         |
+| Linux    | EGL/OpenGL readback on X11 and Wayland                                   | Supported         |
+| macOS    | Compatibility backend planned                                            | Not yet supported |
 
-The addon is pure C# source; the Noesis runtime (managed + native) comes from the public [
-`Noesis.GUI` NuGet package](https://www.nuget.org/packages/Noesis.GUI). No SDK download or Noesis account needed to
-build.
+## Install
 
-1. Copy the `addons/noesisgui/` folder into your Godot .NET project. _Godot compiles it as part of your game assembly
-   automatically._
-2. Add to your game's `.csproj`:
+1. Copy `addons/noesisgui/` into your Godot .NET project.
+2. Add the packages and legacy RID support to your project file:
 
    ```xml
+   <PropertyGroup>
+     <UseRidGraph>true</UseRidGraph>
+   </PropertyGroup>
+
    <ItemGroup>
      <PackageReference Include="Noesis.GUI" Version="3.2.*" />
+     <PackageReference Include="Noesis.App.Theme" Version="3.2.*" />
    </ItemGroup>
    ```
 
-   and inside the main `<PropertyGroup>`:
+3. Build once, then enable **NoesisGodotNet** under **Project Settings > Plugins**.
+4. Configure `noesis_gui/license/name` and `noesis_gui/license/key`, or use the `NOESIS_LICENSE_NAME` and
+   `NOESIS_LICENSE_KEY` environment variables.
+5. Set `noesis_gui/resources/root` to your UI folder, add a `NoesisView`, and assign its `Xaml` property.
 
-   ```xml
-   <!-- Noesis.GUI ships native assets under legacy RIDs (win10-x64);
-        without this .NET 8+ silently skips them (NETSDK1206). -->
-   <UseRidGraph>true</UseRidGraph>
-   ```
+Do not commit license keys. Environment variables or an untracked `override.cfg` are safer.
 
-3. Build once, then enable **NoesisGodotNet** in **Project Settings → Plugins**.
-4. Set your license in **Project Settings → NoesisGUI** (`noesis_gui/license/name`, `noesis_gui/license/key`), or via
-   `NOESIS_LICENSE_NAME` / `NOESIS_LICENSE_KEY` environment variables. Point `noesis_gui/resources/root` at the folder
-   holding your XAML.
-5. Add a `NoesisView` node and set its `Xaml` property. Done.
+## Quick start
 
-## Running this repo
-
-This repo is itself a Godot project with a working example: open in Godot 4.x .NET (restores NuGet on build), set a
-license (or run in eval mode), and run `examples/HelloNoesis/Main.tscn`.
-
-## Usage
-
-Add a `NoesisView` node (extends `TextureRect`), set its `Xaml` property (relative to `noesis_gui/resources/root`, or an
-absolute `res://` path), and hand it a ViewModel:
+`NoesisView` is a Godot `TextureRect`. Assign any CLR object as its WPF-style `DataContext`:
 
 ```csharp
-GetNode<NoesisView>("NoesisView").ViewModel = new MainMenuViewModel();
+NoesisView view = GetNode<NoesisView>("NoesisView");
+view.ViewModel = new MainMenuViewModel();
 ```
 
-The ViewModel is plain .NET. `INotifyPropertyChanged`, `ICommand`, zero engine types - so the same UI + logic previews
-in Noesis Studio and unit-tests outside Godot.
+View models can use `INotifyPropertyChanged` and `ICommand` without depending on Godot types, so the same UI logic can
+run in Noesis Studio and ordinary .NET tests.
 
-### Theme
+The default theme is `Theme/NoesisTheme.DarkBlue.xaml`. Change `noesis_gui/theme/xaml` to another embedded theme, your
+own resource dictionary, or an empty value to disable it.
 
-The official Noesis theme loads by default (embedded in the `Noesis.App.Theme` package), so every standard control -
-TextBox, Slider, ComboBox, ScrollViewer, ProgressBar has proper styles out of the box. `noesis_gui/theme/xaml` controls
-it: the default `Theme/NoesisTheme.DarkBlue.xaml`, another variant like `Theme/NoesisTheme.LightBlue.xaml`, a path to
-your own ResourceDictionary (relative to the resources root or `res://`), or empty to opt out (then untemplated controls
-render as Noesis's pink fallback). See `examples/ThemeShowcase/`.
+## Features and examples
 
-### World-space UI
+- [HelloNoesis](examples/HelloNoesis/) - basic XAML, MVVM binding, and commands
+- [ThemeShowcase](examples/ThemeShowcase/) - standard controls and theme variants
+- [WorldSpace](examples/WorldSpace/) - `NoesisView3D` panels with ray-picked input
+- [Hardening](examples/Hardening/) - interaction and lifecycle exercise scene
 
-`NoesisView3D` puts XAML on a quad in 3D - in-world screens, holo-panels, terminals. Set `Xaml`, `PanelSize` (world
-units), and `PixelsPerMeter` (texture resolution). Mouse input is raycast from the camera and mapped into the view; the
-last-clicked panel owns keyboard focus. Hot-reload and ViewModels work exactly like the 2D `NoesisView` (both wrap the
-same `NoesisViewHost`). See `examples/WorldSpace/`.
+Editor runs watch the resource root for XAML changes. Successful saves rebuild affected views while preserving their
+view models; invalid saves keep the last valid view and display the parse error. Exported builds do not run the watcher.
 
-**Sizing world-space UI.** How large a panel appears is entirely a camera/placement decision - the node only controls
-physical size (`PanelSize`) and texture density (`PixelsPerMeter`). Two rules of thumb:
+## Assets and exports
 
-- *Apparent size*: a panel fills the screen vertically when `PanelSize.y ≈ 2 × distance × tan(fov/2)`. The example uses
-  a 0.9m-tall panel at 0.9m with a 60° FOV (~87% of screen height).
-- *Crispness vs. cost*: pick `PixelsPerMeter` so the texture roughly matches the panel's on-screen pixel size at typical
-  viewing distance. Too low looks soft; too high wastes render + readback bandwidth every frame. The XAML's own layout
-  matters too - a fixed-width column designed for fullscreen 2D will occupy only part of a wide panel (wrap content in a
-  `Viewbox` if you want it to scale to fill instead).
+- Keep XAML, fonts, and XAML-referenced images under `noesis_gui/resources/root`.
+- The importer includes `.xaml` resources in exports automatically.
+- Add raw fonts and images to the export preset's **non-resource include filter** because Godot would otherwise ship
+  only its imported formats. For example: `*.ttf,UI/Images/*`.
+- Reference fonts by family, for example `FontFamily="./#Orbitron"`.
 
-### Editor & UX niceties
+## Rendering
 
-- **Broken-XAML overlay**: if a hot-reload save has invalid markup, the running view keeps the last good frame and shows
-  the parse error in an overlay strip; it clears on the next successful save.
-- **Cursor forwarding**: the OS cursor follows the UI (I-beam over text boxes, hand over hyperlinks) - in 3D, scoped to
-  while the panel is hovered.
-- **Gamepad**: joypad buttons map to Noesis gamepad navigation keys (D-pad focus movement, A/B accept/cancel, shoulder
-  page) on the focused view/panel.
-- **Project → Tools → Open Selected XAML in Noesis Studio**: opens the FileSystem-dock selection in Studio. Set
-  `noesis_gui/editor/studio_path` to the Studio executable, or leave empty to use the OS `.xaml` association.
+Each view asks a backend factory for the fastest supported path:
 
-### XAML hot-reload
+1. Windows shared OpenGL when Godot Compatibility has a current, single-threaded GL context.
+2. Windows Vulkan/OpenGL external-memory interop when Godot exposes the required device extension.
+3. A platform readback backend: WGL on Windows or EGL on Linux.
 
-When running from the editor, the plugin watches `noesis_gui/resources/root` for `.xaml` changes. Save a file in Noesis
-Studio, Rider, anywhere, and the running game updates live: resource dictionaries and templates refresh via Noesis's
-reload mechanism, and any `NoesisView` whose root document changed is rebuilt in place with its ViewModel preserved.
-Invalid markup mid-edit is tolerated (the last good view stays up with a warning). Exported builds skip all of this.
+The Vulkan path remains inactive on stock Godot until the engine exposes the required external-memory capability; see
+[godot-proposals #15210](https://github.com/godotengine/godot-proposals/issues/15210). All zero-copy paths are
+controlled by `noesis_gui/rendering/zero_copy` and fall back automatically.
 
-### Asset conventions
+The selected backend is logged once per view and is available to game diagnostics:
 
-- XAML, fonts (`.ttf`/`.otf`), and XAML-referenced images live under `noesis_gui/resources/root`.
-- `.xaml` files are handled by the bundled import plugin: visible in the FileSystem dock and automatically included in
-  exports (as `XamlFile` resources). No export filters are needed.
-- XAML-referenced **images and fonts** still need to ship raw: add them to your export preset's *non-resource include
-  filter* (e.g. `*.ttf, UI/Images/*`), since Godot's importer would otherwise only export the converted `.ctex`
-  versions.
-- Fonts: reference by family WPF-style - `FontFamily="./#Orbitron"`.
+```csharp
+GD.Print(view.RenderingStatus);
+bool zeroCopy = view.RenderingStatus.IsZeroCopy;
+```
 
-## How it works
+Readback uses a private GL context and uploads an `ImageTexture`, keeping Godot render state isolated. It works under
+both Forward+/Mobile and Compatibility renderers, at the cost of a GPU-to-CPU copy each rendered frame.
 
-Godot `_Process` → Noesis `View.Update` → render on a private offscreen GL context (`RenderDeviceGL`) → readback →
-`ImageTexture` shown by the `NoesisView` control (premultiplied-alpha blend). Input events from `_GuiInput` are
-translated 1:1 (mouse, keyboard incl. text input, wheel, touch).
+## Run this repository
 
-The offscreen-context design works identically under **Forward+ (Vulkan)** and **Compatibility (GL)** and can never
-corrupt Godot's render state. The cost is a GPU→CPU copy per frame which is perfectly fine for menus/HUDs; zero-copy
-paths are the top roadmap item.
+Open the repository in Godot 4.7.1 .NET, build it, configure a license or evaluation mode, and run
+`examples/HelloNoesis/Main.tscn`.
 
-## Rendering backends
+Run the standalone tests with:
 
-The plugin picks the fastest backend at startup, per view:
+```powershell
+dotnet test NoesisGodot.sln
+```
 
-- **Zero-copy, Compatibility/GL renderer** (Windows): a second GL context shared with Godot's renders Noesis directly
-  into a Godot-owned texture via FBO, no per-frame CPU copy. Requires single-threaded Compatibility rendering (the
-  default).
-- **Zero-copy, Forward+/Mobile (Vulkan)** (Windows): a VkImage with exportable memory is allocated on Godot's own Vulkan
-  device, imported into a private GL context via `GL_EXT_memory_object_win32`, and handed back to Godot as a
-  `Texture2DRD` - same GPU memory across both APIs. **Currently inactive on stock Godot**: the engine doesn't enable
-  `VK_KHR_external_memory_win32` at device creation. Proposal filed over on godot-proposals; the plugin detects this and
-  uses readback.
-- **Readback (fallback / Linux)**: private GL/EGL context + `glReadPixels` + texture upload. Works everywhere. Fine for
-  menus/HUDs.
-
-Both zero-copy paths are controlled by `noesis_gui/rendering/zero_copy` (default on) and fall back to readback
-automatically with a logged reason.
-
-The startup log prints which backend each view got.
-
-**Platforms**: Windows (zero-copy under both renderers) and Linux (EGL readback backend, X11, and Wayland - Steam Deck
-included). macOS is on the roadmap (Godot's GL there runs through ANGLE/Metal, which needs different plumbing).
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Roadmap
 
-0. ~~Theme integration~~ (done in 0.4)
-1. ~~Zero-copy Compatibility path~~ (done in 0.7)
-2. ~~Vulkan interop~~ (done in 0.9: external-memory zero-copy on Windows; Linux FD-handle variant pending)
-3. ~~Editor QoL: XAML preview in the editor~~ (hot-reload + import: 0.2; error overlay, cursor forwarding, gamepad,
-   Studio button: 0.6)
-4. ~~World-space UI~~ (done in 0.5: `NoesisView3D`)
-5. ~~Linux render backend~~ (done in 0.8: EGL) / macOS backend (working on getting a test device; ANGLE/Metal path)
-6. C++ GDExtension core for GDScript users (same architecture, native)
+- macOS compatibility/readback backend and platform validation
+- Native Metal rendering after Godot's texture-import path is production-ready
+- Additional Vulkan external-memory paths as Godot exposes the required APIs
+- Optional GDExtension core for non-.NET projects
 
-## License notes
+## Licensing
 
-This plugin code is yours to license as you wish. NoesisGUI itself is commercial software — your Noesis license governs
-shipping it. Do not commit license keys; use env vars or an untracked `override.cfg`.
+The plugin is MIT licensed. NoesisGUI is commercial software and remains governed by your Noesis license.

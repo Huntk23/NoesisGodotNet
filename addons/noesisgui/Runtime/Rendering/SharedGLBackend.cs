@@ -49,10 +49,16 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
 
     public bool OutputIsFlipped => true;
 
-    /// <summary>Inexpensive pre-check: a GL context current on this thread means Compatibility renderer with single-threaded rendering.
-    /// Windows-only (WGL); the OS guard also prevents a DllNotFoundException on other platforms.</summary>
-    public static bool IsSupported() =>
-        OperatingSystem.IsWindows() && wglGetCurrentContext() != IntPtr.Zero;
+    /// <summary>Inexpensive, side-effect-free capability check.</summary>
+    public static NoesisBackendProbe Probe()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return NoesisBackendProbe.Unsupported("WGL context sharing requires Windows.");
+        }
+
+        return wglGetCurrentContext() != IntPtr.Zero ? NoesisBackendProbe.Supported() : NoesisBackendProbe.Unsupported("Godot does not have a current OpenGL context on this thread (Forward+/Mobile or threaded Compatibility).");
+    }
 
     public void Init(int width, int height)
     {
@@ -114,8 +120,6 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         {
             EndContext();
         }
-
-        GD.Print($"[NoesisGUI] Zero-copy GL backend ready ({_width}x{_height}).");
     }
 
     public Texture2D RenderFrame(Noesis.View view, double timeSeconds)

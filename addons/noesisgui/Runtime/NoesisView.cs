@@ -41,6 +41,9 @@ public partial class NoesisView : TextureRect
     /// <summary>The loaded XAML root element. Null before _Ready.</summary>
     public Noesis.FrameworkElement Root => _host.Root;
 
+    /// <summary>The selected render backend and why it was selected.</summary>
+    public NoesisRenderingStatus RenderingStatus => _host.RenderingStatus;
+
     public override void _Ready()
     {
         // Godot composites this texture; Noesis outputs premultiplied alpha.
