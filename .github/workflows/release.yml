@@ -19,11 +19,16 @@ jobs:
         run: ./scripts/Prepare-ReleaseNotes.ps1 -ReleaseTag $env:RELEASE_TAG -OutputPath dist/release-notes.md
 
       - name: Package addon
-        run: |
-          cd addons
-          zip -r "../dist/noesisgui-addon-${GITHUB_REF_NAME}.zip" noesisgui
-          cd ..
-          cp README.md CHANGELOG.md LICENSE dist/
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/New-AddonPackage.ps1 -OutputPath "dist/noesisgui-addon-$env:RELEASE_TAG.zip"
+
+      - name: Verify addon package
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/Test-AddonPackage.ps1 -ArchivePath "dist/noesisgui-addon-$env:RELEASE_TAG.zip"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

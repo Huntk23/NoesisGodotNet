@@ -7,11 +7,19 @@ on:
 
 jobs:
   build:
-    name: Build and test (${{ matrix.os }})
+    name: Build and test (${{ matrix.name }})
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        include:
+          - name: Windows x64
+            os: windows-latest
+          - name: Linux x64
+            os: ubuntu-latest
+          - name: macOS Apple Silicon
+            os: macos-15
+          - name: macOS Intel
+            os: macos-15-intel
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -27,3 +35,17 @@ jobs:
 
       - name: Test
         run: dotnet test tests/NoesisGodot.Tests/NoesisGodot.Tests.csproj -c Debug --no-build
+
+  package:
+    name: Verify release package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package addon
+        shell: pwsh
+        run: ./scripts/New-AddonPackage.ps1 -OutputPath dist/noesisgui-addon-ci.zip
+
+      - name: Verify addon package
+        shell: pwsh
+        run: ./scripts/Test-AddonPackage.ps1 -ArchivePath dist/noesisgui-addon-ci.zip
