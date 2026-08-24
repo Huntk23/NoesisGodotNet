@@ -31,17 +31,13 @@ public static class NoesisServer
 
             // License -------------------------------------------------
             // Project Settings first, environment variables as fallback so keys can stay out of version control.
-            string licenseName = GetSetting("noesis_gui/license/name",
-                System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_NAME") ?? "");
-            string licenseKey = GetSetting("noesis_gui/license/key",
-                System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_KEY") ?? "");
+            string licenseName = GetSetting("noesis_gui/license/name", System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_NAME") ?? "");
+            string licenseKey = GetSetting("noesis_gui/license/key", System.Environment.GetEnvironmentVariable("NOESIS_LICENSE_KEY") ?? "");
 
             if (string.IsNullOrEmpty(licenseName) || string.IsNullOrEmpty(licenseKey))
             {
-                GD.PushWarning("[NoesisGUI] No license configured. Set 'noesis_gui/license/name' and " +
-                               "'noesis_gui/license/key' in Project Settings, or the NOESIS_LICENSE_NAME / " +
-                               "NOESIS_LICENSE_KEY environment variables. Noesis will run in evaluation mode " +
-                               "or refuse to start depending on SDK build.");
+                GD.PushWarning("[NoesisGUI] No license configured. Set 'noesis_gui/license/name' and " + "'noesis_gui/license/key' in Project Settings, or the NOESIS_LICENSE_NAME / " +
+                               "NOESIS_LICENSE_KEY environment variables. Noesis will run in evaluation mode " + "or refuse to start depending on SDK build.");
             }
 
             // Logging -------------------------------------------------
@@ -77,27 +73,19 @@ public static class NoesisServer
 
             // Cursor forwarding: the UI tells us which mouse cursor it wants (I-beam over text boxes, hand over hyperlinks); the owning host
             // routes it to its Godot node.
-            Noesis.GUI.SetCursorCallback((view, cursor) =>
-            {
-                NoesisHotReload.FindByView(view)?.NotifyCursor(NoesisInputMapper.MapCursor(cursor));
-            });
+            Noesis.GUI.SetCursorCallback((view, cursor) => { NoesisHotReload.FindByView(view)?.NotifyCursor(NoesisInputMapper.MapCursor(cursor)); });
 
             // Sensible text defaults. Fallbacks must be fonts that actually exist per platform — Arial/Segoe don't exist on Linux (glyphs
             // would render as missing-glyph tall rectangle boxes with X's).
-            string[] fontFallbacks = OperatingSystem.IsWindows()
-                ? ["Arial", "Segoe UI Emoji"]
-                : ["Noto Sans", "DejaVu Sans", "Liberation Sans", "Noto Color Emoji"];
+            string[] fontFallbacks = OperatingSystem.IsWindows() ? ["Arial", "Segoe UI Emoji"] : ["Noto Sans", "DejaVu Sans", "Liberation Sans", "Noto Color Emoji"];
             Noesis.GUI.SetFontFallbacks(fontFallbacks);
-            Noesis.GUI.SetFontDefaultProperties(15.0f,
-                Noesis.FontWeight.Normal, Noesis.FontStretch.Normal, Noesis.FontStyle.Normal);
+            Noesis.GUI.SetFontDefaultProperties(15.0f, Noesis.FontWeight.Normal, Noesis.FontStretch.Normal, Noesis.FontStyle.Normal);
 
             // Theme: implicit styles/templates for all controls. Without one, untemplated controls render as Noesis's pink fallback.
             // Default is the official theme embedded in Noesis.GUI.Extensions; set the project setting to "" to opt out, or point it at your own
             // ResourceDictionary (res:// paths work through the providers). Read directly (not GetSetting): an explicit EMPTY value means
             // "no theme", which GetSetting would override with the fallback.
-            string theme = ProjectSettings.HasSetting("noesis_gui/theme/xaml")
-                ? (string)ProjectSettings.GetSetting("noesis_gui/theme/xaml")
-                : "Theme/NoesisTheme.DarkBlue.xaml";
+            string theme = ProjectSettings.HasSetting("noesis_gui/theme/xaml") ? (string) ProjectSettings.GetSetting("noesis_gui/theme/xaml") : "Theme/NoesisTheme.DarkBlue.xaml";
             if (!string.IsNullOrEmpty(theme))
             {
                 try
@@ -106,8 +94,7 @@ public static class NoesisServer
                 }
                 catch (Exception e)
                 {
-                    GD.PushWarning($"[NoesisGUI] Failed to load theme '{theme}': {e.Message}. " +
-                                   "Controls without explicit templates will render pink.");
+                    GD.PushWarning($"[NoesisGUI] Failed to load theme '{theme}': {e.Message}. " + "Controls without explicit templates will render pink.");
                 }
             }
 
@@ -125,8 +112,9 @@ public static class NoesisServer
     {
         if (ProjectSettings.HasSetting(name))
         {
-            return (bool)ProjectSettings.GetSetting(name);
+            return (bool) ProjectSettings.GetSetting(name);
         }
+
         return fallback;
     }
 
@@ -134,12 +122,13 @@ public static class NoesisServer
     {
         if (ProjectSettings.HasSetting(name))
         {
-            string value = (string)ProjectSettings.GetSetting(name);
+            string value = (string) ProjectSettings.GetSetting(name);
             if (!string.IsNullOrEmpty(value))
             {
                 return value;
             }
         }
+
         return fallback;
     }
 }

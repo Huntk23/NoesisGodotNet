@@ -25,8 +25,7 @@ public class GodotXamlProvider : Noesis.XamlProvider
             return GodotResourceUtil.OpenRead(resPath, "XAML");
         }
 
-        if (ResourceLoader.Exists(resPath) &&
-            ResourceLoader.Load(resPath) is XamlFile xamlFile)
+        if (ResourceLoader.Exists(resPath) && ResourceLoader.Load(resPath) is XamlFile xamlFile)
         {
             return new MemoryStream(Encoding.UTF8.GetBytes(xamlFile.Source), writable: false);
         }
@@ -65,9 +64,7 @@ public static class GodotResourceUtil
             return "";
         }
 
-        string raw = uri.IsAbsoluteUri && !uri.Scheme.Equals("res", StringComparison.OrdinalIgnoreCase)
-            ? uri.AbsolutePath
-            : uri.OriginalString;
+        string raw = uri.IsAbsoluteUri && !uri.Scheme.Equals("res", StringComparison.OrdinalIgnoreCase) ? uri.AbsolutePath : uri.OriginalString;
         return NormalizePath(raw);
     }
 
@@ -91,6 +88,7 @@ public static class GodotResourceUtil
         {
             return ResPrefix + normalized[ResPrefix.Length..].TrimStart('/');
         }
+
         return normalized.TrimStart('/');
     }
 
@@ -106,14 +104,13 @@ public static class GodotResourceUtil
         {
             return relativePath;
         }
+
         if (string.IsNullOrEmpty(relativePath))
         {
             return basePath;
         }
 
-        return basePath.EndsWith('/')
-            ? basePath + relativePath
-            : $"{basePath}/{relativePath}";
+        return basePath.EndsWith('/') ? basePath + relativePath : $"{basePath}/{relativePath}";
     }
 
     public static Stream OpenRead(string resPath, string kind)

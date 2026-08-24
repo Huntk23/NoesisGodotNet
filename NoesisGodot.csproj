@@ -1,38 +1,38 @@
 <Project Sdk="Godot.NET.Sdk/4.7.1">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <RootNamespace>NoesisGodot</RootNamespace>
-    <LangVersion>latest</LangVersion>
-    <Nullable>disable</Nullable>
-    <!--
-      Noesis.GUI ships native assets under legacy RIDs (win10-x64 etc.).
-      .NET 8+ uses the portable RID graph by default and would skip them,
-      so the native Noesis library would never be copied (NETSDK1206).
-      UseRidGraph restores the old RID fallback resolution.
-    -->
-    <UseRidGraph>true</UseRidGraph>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <RootNamespace>NoesisGodot</RootNamespace>
+        <LangVersion>latest</LangVersion>
+        <Nullable>disable</Nullable>
+        <!--
+          Noesis.GUI ships native assets under legacy RIDs (win10-x64 etc.).
+          .NET 8+ uses the portable RID graph by default and would skip them,
+          so the native Noesis library would never be copied (NETSDK1206).
+          UseRidGraph restores the old RID fallback resolution.
+        -->
+        <UseRidGraph>true</UseRidGraph>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!--
-      NoesisGUI managed core (includes native runtime per RID).
-      Requires a Noesis account/license: https://www.noesisengine.com/licensing.php
-    -->
-    <PackageReference Include="Noesis.GUI" Version="3.2.*" />
-    <!-- Official theme (implicit styles for all controls), loaded via the
-         'noesis_gui/theme/xaml' setting. NOTE: do NOT use Noesis.GUI.Extensions
-         for this — that's the WPF/Blend design-time package and forces a
-         '-windows' TargetFramework (NETSDK1136). -->
-    <PackageReference Include="Noesis.App.Theme" Version="3.2.*" />
-  </ItemGroup>
+    <ItemGroup>
+        <!--
+          NoesisGUI managed core (includes native runtime per RID).
+          Requires a Noesis account/license: https://www.noesisengine.com/licensing.php
+        -->
+        <PackageReference Include="Noesis.GUI" Version="3.2.*"/>
+        <!-- Official theme (implicit styles for all controls), loaded via the
+             'noesis_gui/theme/xaml' setting. NOTE: do NOT use Noesis.GUI.Extensions
+             for this — that's the WPF/Blend design-time package and forces a
+             '-windows' TargetFramework (NETSDK1136). -->
+        <PackageReference Include="Noesis.App.Theme" Version="3.2.*"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="addons\noesisgui\plugin.cfg" />
-    <Content Include="examples\HelloNoesis\UI\MainMenu.xaml" />
-    <Content Include="examples\HelloNoesis\UI\ThemeLab.xaml" />
-    <Content Include="examples\HelloNoesis\UI\WidgetLab.xaml" />
-    <Content Include="README.md" />
-  </ItemGroup>
+    <ItemGroup>
+        <Content Include="addons\noesisgui\plugin.cfg"/>
+        <Content Include="examples\HelloNoesis\UI\MainMenu.xaml"/>
+        <Content Include="examples\HelloNoesis\UI\ThemeLab.xaml"/>
+        <Content Include="examples\HelloNoesis\UI\WidgetLab.xaml"/>
+        <Content Include="README.md"/>
+    </ItemGroup>
 </Project>

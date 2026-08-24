@@ -10,8 +10,7 @@ public partial class HardeningMain : Control
 {
     public override void _Ready()
     {
-        GetNode<NoesisView>("Split/MenuView").ViewModel =
-            new MainMenuViewModel(onQuit: () => GetTree().Quit());
+        GetNode<NoesisView>("Split/MenuView").ViewModel = new MainMenuViewModel(onQuit: () => GetTree().Quit());
         GetNode<NoesisView>("Split/LabView").ViewModel = new WidgetLabViewModel();
     }
 }

@@ -17,7 +17,7 @@ public partial class WorldSpaceMain : Node3D
     public override void _Process(double delta)
     {
         // Gentle bob so it reads as "in the world" — input still lands correctly because picking uses the collider's live transform.
-        _time += (float)delta;
+        _time += (float) delta;
         _panel.Position = new Vector3(0, Mathf.Sin(_time * 0.8f) * 0.02f, 0);
     }
 }

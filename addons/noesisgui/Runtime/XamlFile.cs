@@ -11,5 +11,6 @@ namespace NoesisGodot;
 [GlobalClass]
 public partial class XamlFile : Resource
 {
-    [Export] public string Source { get; set; } = "";
+    [Export]
+    public string Source { get; set; } = "";
 }

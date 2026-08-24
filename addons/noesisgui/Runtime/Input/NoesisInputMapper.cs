@@ -16,14 +16,14 @@ public static class NoesisInputMapper
             case InputEventMouseMotion motion:
             {
                 var p = motion.Position;
-                view.MouseMove((int)p.X, (int)p.Y);
+                view.MouseMove((int) p.X, (int) p.Y);
                 return true;
             }
 
             case InputEventMouseButton button:
             {
                 var p = button.Position;
-                int x = (int)p.X, y = (int)p.Y;
+                int x = (int) p.X, y = (int) p.Y;
 
                 switch (button.ButtonIndex)
                 {
@@ -66,6 +66,7 @@ public static class NoesisInputMapper
                 {
                     view.MouseButtonUp(x, y, nsButton);
                 }
+
                 return true;
             }
 
@@ -80,11 +81,13 @@ public static class NoesisInputMapper
                     {
                         handled |= view.KeyDown(nsKey);
                     }
+
                     // Text input (TextBox etc.)
                     if (key.Unicode != 0)
                     {
-                        handled |= view.Char((uint)key.Unicode);
+                        handled |= view.Char((uint) key.Unicode);
                     }
+
                     return handled || nsKey != Noesis.Key.None;
                 }
 
@@ -102,19 +105,20 @@ public static class NoesisInputMapper
                 var p = touch.Position;
                 if (touch.Pressed)
                 {
-                    view.TouchDown((int)p.X, (int)p.Y, (ulong)touch.Index);
+                    view.TouchDown((int) p.X, (int) p.Y, (ulong) touch.Index);
                 }
                 else
                 {
-                    view.TouchUp((int)p.X, (int)p.Y, (ulong)touch.Index);
+                    view.TouchUp((int) p.X, (int) p.Y, (ulong) touch.Index);
                 }
+
                 return true;
             }
 
             case InputEventScreenDrag drag:
             {
                 var p = drag.Position;
-                view.TouchMove((int)p.X, (int)p.Y, (ulong)drag.Index);
+                view.TouchMove((int) p.X, (int) p.Y, (ulong) drag.Index);
                 return true;
             }
         }
@@ -126,7 +130,7 @@ public static class NoesisInputMapper
     private static int WheelDelta(InputEventMouseButton b)
     {
         float factor = b.Factor > 0f ? b.Factor : 1f;
-        return (int)(120f * factor);
+        return (int) (120f * factor);
     }
 
     /// <summary>Noesis cursor request → Godot cursor shape. NOTE: 3.2 managed passes a Cursor object with a Type property; if your

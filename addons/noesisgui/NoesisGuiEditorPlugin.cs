@@ -46,8 +46,7 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
     private static void OpenSelectedXamlInStudio()
     {
         string[] selected = EditorInterface.Singleton.GetSelectedPaths();
-        string xaml = System.Array.Find(selected ?? [],
-            p => p.EndsWith(".xaml", System.StringComparison.OrdinalIgnoreCase));
+        string xaml = System.Array.Find(selected ?? [], p => p.EndsWith(".xaml", System.StringComparison.OrdinalIgnoreCase));
         if (xaml == null)
         {
             GD.PushWarning("[NoesisGUI] Select a .xaml file in the FileSystem dock first.");
@@ -55,7 +54,7 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         }
 
         string globalPath = ProjectSettings.GlobalizePath(xaml);
-        string studio = (string)ProjectSettings.GetSetting("noesis_gui/editor/studio_path", "");
+        string studio = (string) ProjectSettings.GetSetting("noesis_gui/editor/studio_path", "");
 
         if (!string.IsNullOrEmpty(studio))
         {
@@ -73,6 +72,7 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         {
             ProjectSettings.SetSetting(name, defaultValue);
         }
+
         ProjectSettings.SetInitialValue(name, defaultValue);
 
         // Typed property info + basic flag: without these, custom settings can be hidden in the Project Settings dialog unless "Advanced Settings"
@@ -80,7 +80,7 @@ public partial class NoesisGuiEditorPlugin : EditorPlugin
         ProjectSettings.AddPropertyInfo(new Godot.Collections.Dictionary
         {
             { "name", name },
-            { "type", (int)defaultValue.VariantType },
+            { "type", (int) defaultValue.VariantType },
         });
         ProjectSettings.SetAsBasic(name, true);
     }

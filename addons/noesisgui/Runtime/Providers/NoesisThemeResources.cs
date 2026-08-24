@@ -35,6 +35,7 @@ internal static class NoesisThemeResources
                     _assembly = null; // package isn't referenced — theme disabled
                 }
             }
+
             return _assembly;
         }
     }
@@ -42,8 +43,7 @@ internal static class NoesisThemeResources
     // Exact manifest names recorded during enumeration, keyed by "folder/filename". Reconstructing manifest names from paths is
     // fragile (MSBuild mangles spaces/special chars differently per segment) — this was exactly why PT Root UI never loaded:
     // OpenFont's rebuilt name missed the real one.
-    private static readonly Dictionary<string, string> FontManifestNames =
-        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, string> FontManifestNames = new(StringComparer.OrdinalIgnoreCase);
 
     public static Stream OpenXaml(string path) => Open("", path);
 
@@ -67,6 +67,7 @@ internal static class NoesisThemeResources
                 return null;
             }
         }
+
         return Open(FontNamespace, path);
     }
 
@@ -82,9 +83,7 @@ internal static class NoesisThemeResources
 
         foreach (string name in asm.GetManifestResourceNames())
         {
-            if (!name.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) &&
-                !name.EndsWith(".otf", StringComparison.OrdinalIgnoreCase) &&
-                !name.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
+            if (!name.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) && !name.EndsWith(".otf", StringComparison.OrdinalIgnoreCase) && !name.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -109,9 +108,7 @@ internal static class NoesisThemeResources
             return null;
         }
 
-        string resource = string.IsNullOrEmpty(ns)
-            ? path.Replace('/', '.')
-            : ns + "." + path.Replace('/', '.');
+        string resource = string.IsNullOrEmpty(ns) ? path.Replace('/', '.') : ns + "." + path.Replace('/', '.');
 
         try
         {

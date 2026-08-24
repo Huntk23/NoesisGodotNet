@@ -46,6 +46,7 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
     private CheckFramebufferStatusProc _glCheckFramebufferStatus;
 
     public Noesis.RenderDevice Device => _device;
+
     public bool OutputIsFlipped => true;
 
     /// <summary>Inexpensive pre-check: a GL context current on this thread means Compatibility renderer with single-threaded rendering.
@@ -61,22 +62,22 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         IntPtr godotRc = wglGetCurrentContext();
         if (godotRc == IntPtr.Zero)
         {
-            throw new InvalidOperationException(
-                "No GL context current (Forward+/Mobile renderer, or threaded Compatibility rendering).");
+            throw new InvalidOperationException("No GL context current (Forward+/Mobile renderer, or threaded Compatibility rendering).");
         }
 
         // Hidden window purely to own a DC for our context.
-        _hwnd = CreateWindowExW(0, "STATIC", "NoesisSharedGL", WS_POPUP,
-            0, 0, 4, 4, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        _hwnd = CreateWindowExW(0, "STATIC", "NoesisSharedGL", WS_POPUP, 0, 0, 4, 4, IntPtr.Zero,
+            IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         if (_hwnd == IntPtr.Zero)
         {
             throw new InvalidOperationException("CreateWindowExW failed.");
         }
+
         _hdc = GetDC(_hwnd);
 
         var pfd = new PIXELFORMATDESCRIPTOR
         {
-            nSize = (ushort)Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
+            nSize = (ushort) Marshal.SizeOf<PIXELFORMATDESCRIPTOR>(),
             nVersion = 1,
             dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
             iPixelType = PFD_TYPE_RGBA,
@@ -161,6 +162,7 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         {
             return;
         }
+
         _width = width;
         _height = height;
 
@@ -210,16 +212,19 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
             wglDeleteContext(_hglrc);
             _hglrc = IntPtr.Zero;
         }
+
         if (_hdc != IntPtr.Zero)
         {
             ReleaseDC(_hwnd, _hdc);
             _hdc = IntPtr.Zero;
         }
+
         if (_hwnd != IntPtr.Zero)
         {
             DestroyWindow(_hwnd);
             _hwnd = IntPtr.Zero;
         }
+
         _device = null;
         _texture = null;
     }
@@ -227,8 +232,7 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
     private void CreateTarget()
     {
         // Godot-owned texture; its GL id is valid in our context via sharing.
-        var blank = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8,
-            new byte[_width * _height * 4]);
+        var blank = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, new byte[_width * _height * 4]);
         _texture = ImageTexture.CreateFromImage(blank);
 
         ulong glTextureId = RenderingServer.TextureGetNativeHandle(_texture.GetRid());
@@ -241,7 +245,7 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         _glGenFramebuffers(1, ids);
         _fbo = ids[0];
         _glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
-        _glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (uint)glTextureId, 0);
+        _glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (uint) glTextureId, 0);
 
         _glGenRenderbuffers(1, ids);
         _stencilRbo = ids[0];
@@ -254,6 +258,7 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException($"FBO incomplete (0x{status:X}).");
         }
+
         _glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
@@ -264,11 +269,13 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
             _glDeleteFramebuffers(1, [_fbo]);
             _fbo = 0;
         }
+
         if (_stencilRbo != 0)
         {
             _glDeleteRenderbuffers(1, [_stencilRbo]);
             _stencilRbo = 0;
         }
+
         _texture = null; // Godot frees the GPU texture with the resource
     }
 
@@ -293,18 +300,28 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
         {
             throw new InvalidOperationException($"Missing GL entry point '{name}'.");
         }
+
         return Marshal.GetDelegateForFunctionPointer<T>(addr);
     }
 
     private delegate void GenFramebuffersProc(int n, uint[] ids);
+
     private delegate void DeleteFramebuffersProc(int n, uint[] ids);
+
     private delegate void BindFramebufferProc(uint target, uint framebuffer);
+
     private delegate void FramebufferTexture2DProc(uint target, uint attachment, uint textarget, uint texture, int level);
+
     private delegate void GenRenderbuffersProc(int n, uint[] ids);
+
     private delegate void DeleteRenderbuffersProc(int n, uint[] ids);
+
     private delegate void BindRenderbufferProc(uint target, uint renderbuffer);
+
     private delegate void RenderbufferStorageProc(uint target, uint internalformat, int width, int height);
+
     private delegate void FramebufferRenderbufferProc(uint target, uint attachment, uint renderbuffertarget, uint renderbuffer);
+
     private delegate uint CheckFramebufferStatusProc(uint target);
 
     private const uint WS_POPUP = 0x80000000;
@@ -344,28 +361,63 @@ internal sealed class SharedGLBackend : INoesisRenderBackend
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName,
-        uint style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
+    private static extern IntPtr CreateWindowExW(uint exStyle, string className, string windowName, uint style, int x, int y, int w, int h, IntPtr parent,
+        IntPtr menu, IntPtr instance, IntPtr param);
 
-    [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+    [DllImport("user32.dll")]
+    private static extern bool DestroyWindow(IntPtr hwnd);
 
-    [DllImport("gdi32.dll")] private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
-    [DllImport("gdi32.dll")] private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hwnd);
 
-    [DllImport("opengl32.dll")] private static extern IntPtr wglCreateContext(IntPtr hdc);
-    [DllImport("opengl32.dll")] private static extern bool wglDeleteContext(IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentDC();
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetCurrentContext();
-    [DllImport("opengl32.dll")] private static extern bool wglShareLists(IntPtr hglrcSrc, IntPtr hglrcDst);
-    [DllImport("opengl32.dll")] private static extern IntPtr wglGetProcAddress(string name);
-    [DllImport("opengl32.dll")] private static extern void glViewport(int x, int y, int w, int h);
-    [DllImport("opengl32.dll")] private static extern void glDisable(uint cap);
-    [DllImport("opengl32.dll")] private static extern void glColorMask(bool r, bool g, bool b, bool a);
-    [DllImport("opengl32.dll")] private static extern void glClearColor(float r, float g, float b, float a);
-    [DllImport("opengl32.dll")] private static extern void glClearStencil(int s);
-    [DllImport("opengl32.dll")] private static extern void glClear(uint mask);
-    [DllImport("opengl32.dll")] private static extern void glFlush();
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    private static extern int ChoosePixelFormat(IntPtr hdc, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool SetPixelFormat(IntPtr hdc, int format, ref PIXELFORMATDESCRIPTOR pfd);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglCreateContext(IntPtr hdc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglDeleteContext(IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglMakeCurrent(IntPtr hdc, IntPtr hglrc);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentDC();
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetCurrentContext();
+
+    [DllImport("opengl32.dll")]
+    private static extern bool wglShareLists(IntPtr hglrcSrc, IntPtr hglrcDst);
+
+    [DllImport("opengl32.dll")]
+    private static extern IntPtr wglGetProcAddress(string name);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glViewport(int x, int y, int w, int h);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glDisable(uint cap);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glColorMask(bool r, bool g, bool b, bool a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearColor(float r, float g, float b, float a);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClearStencil(int s);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glClear(uint mask);
+
+    [DllImport("opengl32.dll")]
+    private static extern void glFlush();
 }

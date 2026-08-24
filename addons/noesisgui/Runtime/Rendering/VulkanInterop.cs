@@ -30,8 +30,7 @@ internal static class VulkanInterop
 
     /// <summary>True if the device can export memory as Win32 handles (VK_KHR_external_memory_win32 enabled at device creation).</summary>
     public static bool SupportsWin32HandleExport(IntPtr device) =>
-        device != IntPtr.Zero &&
-        vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR") != IntPtr.Zero;
+        device != IntPtr.Zero && vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR") != IntPtr.Zero;
 
     /// <summary>Creates a 2D RGBA8 optimal-tiling image with exportable dedicated memory on the given device.
     /// Throws with a diagnostic on any failure.</summary>
@@ -58,8 +57,7 @@ internal static class VulkanInterop
             arrayLayers = 1,
             samples = VK_SAMPLE_COUNT_1_BIT,
             tiling = VK_IMAGE_TILING_OPTIMAL,
-            usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             sharingMode = VK_SHARING_MODE_EXCLUSIVE,
             initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
@@ -74,6 +72,7 @@ internal static class VulkanInterop
         {
             Marshal.FreeHGlobal(externalInfoPtr);
         }
+
         Check(result, "vkCreateImage");
 
         try
@@ -124,10 +123,9 @@ internal static class VulkanInterop
                 IntPtr getHandleFn = vkGetDeviceProcAddr(device, "vkGetMemoryWin32HandleKHR");
                 if (getHandleFn == IntPtr.Zero)
                 {
-                    throw new InvalidOperationException(
-                        "vkGetMemoryWin32HandleKHR unavailable — Godot's Vulkan device was created " +
-                        "without VK_KHR_external_memory_win32.");
+                    throw new InvalidOperationException("vkGetMemoryWin32HandleKHR unavailable — Godot's Vulkan device was created " + "without VK_KHR_external_memory_win32.");
                 }
+
                 var getHandle = Marshal.GetDelegateForFunctionPointer<VkGetMemoryWin32HandleKHRProc>(getHandleFn);
 
                 var handleInfo = new VkMemoryGetWin32HandleInfoKHR
@@ -159,10 +157,12 @@ internal static class VulkanInterop
         {
             CloseHandle(exported.Win32Handle);
         }
+
         if (exported.Image != 0)
         {
             vkDestroyImage(device, exported.Image, IntPtr.Zero);
         }
+
         if (exported.Memory != 0)
         {
             vkFreeMemory(device, exported.Memory, IntPtr.Zero);
@@ -174,13 +174,14 @@ internal static class VulkanInterop
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, out VkPhysicalDeviceMemoryProperties props);
         for (uint i = 0; i < props.memoryTypeCount; i++)
         {
-            bool allowed = (typeBits & (1u << (int)i)) != 0;
+            bool allowed = (typeBits & (1u << (int) i)) != 0;
             bool deviceLocal = (props.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0;
             if (allowed && deviceLocal)
             {
                 return i;
             }
         }
+
         throw new InvalidOperationException("No device-local memory type for exported image.");
     }
 
@@ -309,9 +310,12 @@ internal static class VulkanInterop
     private struct VkPhysicalDeviceMemoryProperties
     {
         public uint memoryTypeCount;
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
         public VkMemoryType[] memoryTypes;
+
         public uint memoryHeapCount;
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
         public VkMemoryHeap[] memoryHeaps;
     }
@@ -320,14 +324,30 @@ internal static class VulkanInterop
 
     private const string VulkanLib = "vulkan-1.dll"; // This might change one day...?
 
-    [DllImport(VulkanLib)] private static extern int vkCreateImage(IntPtr device, ref VkImageCreateInfo info, IntPtr allocator, out ulong image);
-    [DllImport(VulkanLib)] private static extern void vkDestroyImage(IntPtr device, ulong image, IntPtr allocator);
-    [DllImport(VulkanLib)] private static extern void vkGetImageMemoryRequirements(IntPtr device, ulong image, out VkMemoryRequirements requirements);
-    [DllImport(VulkanLib)] private static extern int vkAllocateMemory(IntPtr device, ref VkMemoryAllocateInfo info, IntPtr allocator, out ulong memory);
-    [DllImport(VulkanLib)] private static extern void vkFreeMemory(IntPtr device, ulong memory, IntPtr allocator);
-    [DllImport(VulkanLib)] private static extern int vkBindImageMemory(IntPtr device, ulong image, ulong memory, ulong offset);
-    [DllImport(VulkanLib)] private static extern void vkGetPhysicalDeviceMemoryProperties(IntPtr physicalDevice, out VkPhysicalDeviceMemoryProperties props);
-    [DllImport(VulkanLib)] private static extern IntPtr vkGetDeviceProcAddr(IntPtr device, string name);
+    [DllImport(VulkanLib)]
+    private static extern int vkCreateImage(IntPtr device, ref VkImageCreateInfo info, IntPtr allocator, out ulong image);
 
-    [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
+    [DllImport(VulkanLib)]
+    private static extern void vkDestroyImage(IntPtr device, ulong image, IntPtr allocator);
+
+    [DllImport(VulkanLib)]
+    private static extern void vkGetImageMemoryRequirements(IntPtr device, ulong image, out VkMemoryRequirements requirements);
+
+    [DllImport(VulkanLib)]
+    private static extern int vkAllocateMemory(IntPtr device, ref VkMemoryAllocateInfo info, IntPtr allocator, out ulong memory);
+
+    [DllImport(VulkanLib)]
+    private static extern void vkFreeMemory(IntPtr device, ulong memory, IntPtr allocator);
+
+    [DllImport(VulkanLib)]
+    private static extern int vkBindImageMemory(IntPtr device, ulong image, ulong memory, ulong offset);
+
+    [DllImport(VulkanLib)]
+    private static extern void vkGetPhysicalDeviceMemoryProperties(IntPtr physicalDevice, out VkPhysicalDeviceMemoryProperties props);
+
+    [DllImport(VulkanLib)]
+    private static extern IntPtr vkGetDeviceProcAddr(IntPtr device, string name);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool CloseHandle(IntPtr handle);
 }

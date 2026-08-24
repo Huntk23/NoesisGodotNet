@@ -64,6 +64,7 @@ public static class NoesisHotReload
                 return host;
             }
         }
+
         return null;
     }
 
@@ -84,6 +85,7 @@ public static class NoesisHotReload
         {
             return;
         }
+
         _lastPumpFrame = frame;
 
         // Editors fire several events per save — dedupe this frame's batch.
@@ -128,6 +130,7 @@ public static class NoesisHotReload
                 {
                     GD.PushWarning($"[NoesisGUI] '{rel}' has invalid XAML, keeping previous view: {parseError}");
                 }
+
                 foreach (NoesisViewHost host in Hosts)
                 {
                     if (MatchesXaml(host.Xaml, rel))
@@ -135,6 +138,7 @@ public static class NoesisHotReload
                         host.NotifyReloadFailed(parseError);
                     }
                 }
+
                 continue;
             }
 
@@ -175,6 +179,7 @@ public static class NoesisHotReload
         {
             return null;
         }
+
         return rel == "." ? "" : rel;
     }
 
@@ -187,6 +192,7 @@ public static class NoesisHotReload
             string abs = GodotResourceUtil.ToResPath(rel);
             return string.Equals(x, abs, StringComparison.Ordinal);
         }
+
         return string.Equals(x, rel, StringComparison.Ordinal);
     }
 }
