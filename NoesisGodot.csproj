@@ -35,4 +35,10 @@
         <Content Include="examples\HelloNoesis\UI\WidgetLab.xaml"/>
         <Content Include="README.md"/>
     </ItemGroup>
+
+    <!-- Tests live below the Godot project root, so keep them out of export assemblies. The engine smoke runner is Debug-only. -->
+    <ItemGroup>
+        <Compile Remove="tests\**\*.cs"/>
+        <Compile Include="tests\Smoke\SmokeRunner.cs" Condition="'$(Configuration)' == 'Debug'"/>
+    </ItemGroup>
 </Project>
