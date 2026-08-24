@@ -3,9 +3,8 @@
 Host [NoesisGUI](https://www.noesisengine.com/) XAML views in Godot 4 .NET. Build UI in Noesis Studio or Blend, bind it
 to ordinary C# view models, and use it as screen-space or world-space Godot UI.
 
-> Independent, unofficial community
->
-integration, [endorsed by Noesis Technologies in its developer/community forum](https://www.noesisengine.com/forums/viewtopic.php?p=545#p545).
+> Independent, unofficial community integration,
+> [endorsed by Noesis Technologies in its developer/community forum](https://www.noesisengine.com/forums/viewtopic.php?p=545#p545).
 > It is not developed by or affiliated with Noesis Technologies.
 
 The plugin supports MVVM binding and commands, styled controls, mouse, keyboard, touch and gamepad input, XAML
