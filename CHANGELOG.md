@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.10.1 - Test foundation
+
+- Added a standalone xUnit suite for `res://` path normalization and
+  Godot-to-Noesis keyboard/gamepad mappings
+- Added an opt-in Godot lifecycle smoke scene covering view creation,
+  rendering, resize, XAML reload, and disposal
+- Fixed `NoesisView` retaining its last render texture after leaving the scene tree
+- CI now builds the solution and runs the pure .NET tests on Windows and
+  Linux; smoke-test code remains Debug-only and is excluded from export
+  assemblies
+- Tag releases now publish the matching changelog section and fail when the
+  tag, plugin version, or changelog entry disagree
+
+## 0.10.0 - Stability hardening
+
+- Made view initialization, XAML reload, renderer shutdown, and backend
+  disposal transactional and failure-safe
+- Preserved activation and the last valid view across hot reloads, with safer
+  watcher and callback cleanup
+- Hardened `res://` URI normalization so absolute Godot resource paths keep
+  their full path and casing
+- Removed the extra CPU row-flip copy from Windows and Linux readback backends
+  and tightened GL/EGL context, resize, and cleanup handling
+- Improved world-space input capture, cursor reset, edge clamping, and
+  teardown behavior
+
 ## 0.9.2
 
 - Release infrastructure: MIT LICENSE, this changelog, CI build checks

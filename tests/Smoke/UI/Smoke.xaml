@@ -1,0 +1,8 @@
+<Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Background="#FF142436">
+    <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+            Padding="24" Background="#FF24577A" CornerRadius="8">
+        <TextBlock Text="NoesisGodot smoke test" FontSize="24" Foreground="White" />
+    </Border>
+</Grid>

@@ -12,9 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare release notes
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/Prepare-ReleaseNotes.ps1 -ReleaseTag $env:RELEASE_TAG -OutputPath dist/release-notes.md
+
       - name: Package addon
         run: |
-          mkdir -p dist
           cd addons
           zip -r "../dist/noesisgui-addon-${GITHUB_REF_NAME}.zip" noesisgui
           cd ..
@@ -24,9 +29,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/noesisgui-addon-*.zip
-          generate_release_notes: true
-          body: |
-            Install: unzip into your Godot .NET project so the folder lands at
-            `addons/noesisgui/`, add the `Noesis.GUI` + `Noesis.App.Theme`
-            NuGet packages and `<UseRidGraph>true</UseRidGraph>` to your
-            .csproj, build, enable the plugin. Full instructions in the README.
+          fail_on_unmatched_files: true
+          body_path: dist/release-notes.md

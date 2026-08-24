@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Compile (${{ matrix.os }})
+    name: Build and test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -20,7 +20,10 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Godot.NET.Sdk compiles against NuGet-provided assemblies; the engine
-      # itself is not required for a compile check.
+      # Godot.NET.Sdk and the pure unit tests use NuGet-provided assemblies;
+      # the engine itself is not required for this job.
       - name: Build
-        run: dotnet build NoesisGodot.csproj -c Debug
+        run: dotnet build NoesisGodot.sln -c Debug
+
+      - name: Test
+        run: dotnet test tests/NoesisGodot.Tests/NoesisGodot.Tests.csproj -c Debug --no-build

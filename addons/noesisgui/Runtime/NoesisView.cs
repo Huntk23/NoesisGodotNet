@@ -208,6 +208,7 @@ public partial class NoesisView : TextureRect
     public override void _ExitTree()
     {
         _host.Dispose();
+        Texture = null;
     }
 
     #endregion
