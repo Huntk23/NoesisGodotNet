@@ -10,6 +10,12 @@
   `NoesisView3D`
 - Consolidated backend startup reporting into one selected-backend message per
   view, including fallback reasons
+- Extended unit and engine-smoke coverage for backend status, transfer mode,
+  resize, reload, and disposal behavior
+- CI now builds and tests on macOS Apple Silicon and Intel in addition to
+  Windows and Linux
+- Release archives now extract directly to `addons/noesisgui`, include the
+  README, changelog, and license, and are checked against the source manifest
 - Reworked the README around installation, supported platforms, examples, and
   rendering behavior
 
