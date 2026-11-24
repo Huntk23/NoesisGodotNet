@@ -13,7 +13,9 @@ hot-reload, 2D controls, and 3D panels. The repository currently targets Godot 4
 ## Requirements and platforms
 
 - Godot 4 .NET
-- .NET 8 SDK
+- .NET 10 SDK
+- An IDE that supports .NET 10, such as Visual Studio 2026 or a current JetBrains Rider (Visual Studio 2022 cannot open
+  `net10.0` projects)
 - A [NoesisGUI license](https://www.noesisengine.com/licensing.php) for licensed use
 
 | Platform | Rendering path                                                           | Status            |
@@ -22,13 +24,18 @@ hot-reload, 2D controls, and 3D panels. The repository currently targets Godot 4
 | Linux    | EGL/OpenGL readback on X11 and Wayland                                   | Supported         |
 | macOS    | Compatibility backend planned                                            | Not yet supported |
 
+This repository targets `net10.0`. .NET 8 reached end of support in November 2026, so new projects should target
+`net10.0` as well. The addon is compiled into your own project, so Godot 4.7 projects that still target `net8.0` keep
+working; CI checks that the addon builds for `net8.0`. Godot 4.8 and later require `net10.0`.
+
 ## Install
 
 1. Copy `addons/noesisgui/` into your Godot .NET project.
-2. Add the packages and legacy RID support to your project file:
+2. In your project file, set `TargetFramework` to `net10.0` (recommended) and add the packages and legacy RID support:
 
    ```xml
    <PropertyGroup>
+     <TargetFramework>net10.0</TargetFramework>
      <UseRidGraph>true</UseRidGraph>
    </PropertyGroup>
 

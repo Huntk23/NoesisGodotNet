@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       # Godot.NET.Sdk and the pure unit tests use NuGet-provided assemblies;
       # the engine itself is not required for this job.
@@ -35,6 +35,26 @@ jobs:
 
       - name: Test
         run: dotnet test tests/NoesisGodot.Tests/NoesisGodot.Tests.csproj -c Debug --no-build
+
+  net8-compat:
+    name: Compile addon for net8.0 projects
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The addon ships as source and compiles under the consuming project's
+      # target framework. Godot 4.7 projects may still target net8.0, so make
+      # sure the addon does not depend on net10.0-only APIs. Restore runs as its
+      # own step because the implicit restore in `dotnet build` ignores
+      # -p:TargetFramework and would only restore net10.0.
+      - name: Build for net8.0
+        run: |
+          dotnet restore NoesisGodot.csproj -p:TargetFramework=net8.0
+          dotnet build NoesisGodot.csproj -c Debug --no-restore -p:TargetFramework=net8.0
 
   package:
     name: Verify release package

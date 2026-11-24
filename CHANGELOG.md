@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Retargeted the plugin project and unit tests from `net8.0` (end of support
+  November 2026) to `net10.0`, still on Godot 4.7
+- CI now builds and tests with the .NET 10 SDK and adds a `net8.0` compile
+  check so Godot 4.7 projects that still target `net8.0` can use the addon
+- README now lists the .NET 10 SDK and a .NET 10-capable IDE as requirements
+
 ## 0.11.0 - Backend capabilities
 
 - Extracted backend probing, selection, initialization, and fallback from
